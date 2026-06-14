@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       executionId:
-        required: true
+        required: false
         type: string
 
       requestedBy:
@@ -16,12 +16,12 @@ on:
         type: string
 
       scriptFileName:
-        required: true
+        required: False
         type: string
         default: runner/generated.spec.ts
 
       scriptContent:
-        required: true
+        required: false
         type: string
 
 jobs:
