@@ -2,53 +2,71 @@ name: Run Playwright
 
 on:
   workflow_dispatch:
-
     inputs:
-
-      testScript:
+      executionId:
         required: true
+        type: string
+
+      requestedBy:
+        required: false
         type: string
 
       targetUrl:
         required: false
         type: string
 
+      scriptFileName:
+        required: true
+        type: string
+        default: runner/generated.spec.ts
+
+      scriptContent:
+        required: true
+        type: string
+
 jobs:
-
   test:
-
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - run: npm install
+      - name: Install Dependencies
+        run: npm ci || npm install
 
-      - name: Create Test File
+      - name: Create Test Folder
+        run: mkdir -p runner
 
+      - name: Write Generated Test
         run: |
+          printf "%s" "${{ github.event.inputs.scriptContent }}" > ${{ github.event.inputs.scriptFileName }}
 
-          mkdir -p runner
+      - name: Install Playwright
+        run: npx playwright install --with-deps
 
-          cat <<'EOF' > runner/generated.spec.ts
+      - name: Run Playwright Tests
+        run: npx playwright test ${{ github.event.inputs.scriptFileName }}
 
-          ${{ github.event.inputs.testScript }}
-
-          EOF
-
-      - run: npx playwright install --with-deps
-
-      - run: npx playwright test runner/generated.spec.ts
-
-      - uses: actions/upload-artifact@v4
-
+      - name: Upload Test Artifacts
         if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.event.inputs.executionId }}
+          path: |
+            playwright-report/
+            test-results/
+
+      - name: Execution Summary
+        if: always()
+        run: |
+          echo "executionId=${{ github.event.inputs.executionId }}"
+          echo "status=$?"
 
         with:
           name: playwright-report
