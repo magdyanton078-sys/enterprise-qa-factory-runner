@@ -2,7 +2,8 @@
   "name": "enterprise-qa-runner",
   "version": "1.0.0",
   "scripts": {
-    "test": "playwright test"
+    "test": "playwright test",
+    "postinstall": "playwright install"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0"
