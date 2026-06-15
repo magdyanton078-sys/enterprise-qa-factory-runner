@@ -15,6 +15,10 @@ on:
         required: false
         type: string
 
+      userRequest:
+        required: false
+        type: string
+
       scriptFileName:
         required: false
         type: string
