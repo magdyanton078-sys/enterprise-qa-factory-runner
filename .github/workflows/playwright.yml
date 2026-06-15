@@ -7,50 +7,71 @@ on:
         required: true
         type: string
 
+      executionId:
+        required: false
+        type: string
+
 jobs:
   test:
     runs-on: ubuntu-latest
 
     steps:
+      # 1) Checkout repo
       - name: Checkout Repo
         uses: actions/checkout@v4
 
+      # 2) Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # 3) Install dependencies
       - name: Install Dependencies
-        run: npm ci || npm install
-
-      - name: Debug Input
         run: |
-          echo "USER REQUEST:"
-          echo "${{ github.event.inputs.userRequest }}"
+          npm ci || npm install
 
-      - name: Generate Test File
+      # 4) Ensure test directory exists
+      - name: Ensure Directory Exists
         run: |
           mkdir -p runner
+
+      # 5) Generate Playwright test file dynamically
+      - name: Generate Test File
+        run: |
           cat <<EOF > runner/generated.spec.ts
           import { test, expect } from '@playwright/test';
 
-          test('generated test', async ({ page }) => {
+          test('Generated Test - User Request', async ({ page }) => {
+            console.log("User Request: ${{ github.event.inputs.userRequest }}");
+
             await page.goto('https://qacart.com/');
-            console.log("User request: ${{ github.event.inputs.userRequest }}");
+
+            await expect(page).toHaveTitle(/QAcart|QA/i);
           });
           EOF
 
-      - name: Install Playwright
+      # 6) Install Playwright browsers
+      - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
-      - name: Run Tests
+      # 7) Run tests
+      - name: Run Playwright Tests
         run: npx playwright test runner/generated.spec.ts
 
-      - name: Upload Artifacts
+      # 8) Post-run cleanup / setup info
+      - name: Post Setup Node.js Info
+        if: always()
+        run: |
+          echo "Execution ID: ${{ github.event.inputs.executionId }}"
+          echo "User Request: ${{ github.event.inputs.userRequest }}"
+
+      # 9) Upload artifacts (report + results)
+      - name: Upload Test Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: report
+          name: playwright-results-${{ github.event.inputs.executionId }}
           path: |
             playwright-report/
             test-results/
