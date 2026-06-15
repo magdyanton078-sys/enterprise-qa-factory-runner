@@ -3,29 +3,8 @@ name: Run Playwright
 on:
   workflow_dispatch:
     inputs:
-      executionId:
-        required: false
-        type: string
-
-      requestedBy:
-        required: false
-        type: string
-
-      targetUrl:
-        required: false
-        type: string
-
       userRequest:
-        required: false
-        type: string
-
-      scriptFileName:
-        required: false
-        type: string
-        default: runner/generated.spec.ts
-
-      scriptContent:
-        required: false
+        required: true
         type: string
 
 jobs:
@@ -44,49 +23,34 @@ jobs:
       - name: Install Dependencies
         run: npm ci || npm install
 
-      - name: Ensure Directory Exists
-        run: mkdir -p "$(dirname "${{ github.event.inputs.scriptFileName }}")"
-
-      # 🔥 FIX 1: safer file writing (avoids breaking on quotes/newlines)
-      - name: Write Generated Test
+      - name: Debug Input
         run: |
-          printf "%s" "${{ github.event.inputs.scriptContent }}" > "${{ github.event.inputs.scriptFileName }}"
+          echo "USER REQUEST:"
+          echo "${{ github.event.inputs.userRequest }}"
 
-      # 🔥 FIX 2: verify file actually exists (critical debug)
-      - name: Validate Generated File
+      - name: Generate Test File
         run: |
-          echo "===== GENERATED TEST FILE ====="
-          cat "${{ github.event.inputs.scriptFileName }}" || true
-          echo "================================"
+          mkdir -p runner
+          cat <<EOF > runner/generated.spec.ts
+          import { test, expect } from '@playwright/test';
 
-      # 🔥 FIX 3: proper Playwright install
-      - name: Install Playwright Browsers
+          test('generated test', async ({ page }) => {
+            await page.goto('https://qacart.com/');
+            console.log("User request: ${{ github.event.inputs.userRequest }}");
+          });
+          EOF
+
+      - name: Install Playwright
         run: npx playwright install --with-deps
 
-      # 🔥 FIX 4: run tests with failure hard-stop (no fake success)
-      - name: Run Playwright Tests
-        run: npx playwright test "${{ github.event.inputs.scriptFileName }}"
+      - name: Run Tests
+        run: npx playwright test runner/generated.spec.ts
 
-      # 🔥 FIX 5: always show results if fail
-      - name: Debug Test Results
-        if: always()
-        run: |
-          echo "===== TEST RESULTS ====="
-          ls -R test-results || true
-          ls -R playwright-report || true
-
-      - name: Upload Test Artifacts
+      - name: Upload Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ github.event.inputs.executionId }}
+          name: report
           path: |
             playwright-report/
             test-results/
-
-      # 🔥 FIX 6: real execution status
-      - name: Execution Summary
-        if: always()
-        run: |
-          echo "executionId=${{ github.event.inputs.executionId }}"
-          echo "status=$?"
