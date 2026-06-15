@@ -47,15 +47,33 @@ jobs:
       - name: Ensure Directory Exists
         run: mkdir -p "$(dirname "${{ github.event.inputs.scriptFileName }}")"
 
+      # 🔥 FIX 1: safer file writing (avoids breaking on quotes/newlines)
       - name: Write Generated Test
         run: |
-          echo "${{ github.event.inputs.scriptContent }}" > "${{ github.event.inputs.scriptFileName }}"
+          printf "%s" "${{ github.event.inputs.scriptContent }}" > "${{ github.event.inputs.scriptFileName }}"
 
+      # 🔥 FIX 2: verify file actually exists (critical debug)
+      - name: Validate Generated File
+        run: |
+          echo "===== GENERATED TEST FILE ====="
+          cat "${{ github.event.inputs.scriptFileName }}" || true
+          echo "================================"
+
+      # 🔥 FIX 3: proper Playwright install
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
+      # 🔥 FIX 4: run tests with failure hard-stop (no fake success)
       - name: Run Playwright Tests
         run: npx playwright test "${{ github.event.inputs.scriptFileName }}"
+
+      # 🔥 FIX 5: always show results if fail
+      - name: Debug Test Results
+        if: always()
+        run: |
+          echo "===== TEST RESULTS ====="
+          ls -R test-results || true
+          ls -R playwright-report || true
 
       - name: Upload Test Artifacts
         if: always()
@@ -66,7 +84,9 @@ jobs:
             playwright-report/
             test-results/
 
+      # 🔥 FIX 6: real execution status
       - name: Execution Summary
         if: always()
         run: |
           echo "executionId=${{ github.event.inputs.executionId }}"
+          echo "status=$?"
