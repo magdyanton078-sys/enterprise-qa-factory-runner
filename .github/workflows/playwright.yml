@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Checkout repo
+      # 1) Checkout Repo
       - name: Checkout Repo
         uses: actions/checkout@v4
 
@@ -26,23 +26,23 @@ jobs:
         with:
           node-version: 20
 
-      # 3) Install dependencies
+      # 3) Install Dependencies
       - name: Install Dependencies
         run: |
           npm ci || npm install
 
-      # 4) Ensure test directory exists
+      # 4) Ensure Directory Exists
       - name: Ensure Directory Exists
         run: |
           mkdir -p runner
 
-      # 5) Generate Playwright test file dynamically
+      # 5) Generate Test File
       - name: Generate Test File
         run: |
           cat <<EOF > runner/generated.spec.ts
           import { test, expect } from '@playwright/test';
 
-          test('Generated Test - User Request', async ({ page }) => {
+          test('Generated Test', async ({ page }) => {
             console.log("User Request: ${{ github.event.inputs.userRequest }}");
 
             await page.goto('https://qacart.com/');
@@ -51,27 +51,19 @@ jobs:
           });
           EOF
 
-      # 6) Install Playwright browsers
+      # 6) Install Playwright Browsers
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
-      # 7) Run tests
+      # 7) Run Playwright Tests
       - name: Run Playwright Tests
         run: npx playwright test runner/generated.spec.ts
 
-      # 8) Post-run cleanup / setup info
-      - name: Post Setup Node.js Info
+      # 8) Post Setup Node.js
+      - name: Post Setup Node.js
         if: always()
         run: |
           echo "Execution ID: ${{ github.event.inputs.executionId }}"
           echo "User Request: ${{ github.event.inputs.userRequest }}"
-
-      # 9) Upload artifacts (report + results)
-      - name: Upload Test Artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-results-${{ github.event.inputs.executionId }}
-          path: |
-            playwright-report/
-            test-results/
+          node -v
+          npm -v
