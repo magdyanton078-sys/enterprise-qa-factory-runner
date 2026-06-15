@@ -45,19 +45,28 @@ jobs:
         run: npm install
 
       - name: Ensure Directory Exists
-        run: mkdir -p $(dirname "${{ github.event.inputs.scriptFileName }}")
+        run: |
+          FILE_PATH="${{ github.event.inputs.scriptFileName }}"
+          if [ -z "$FILE_PATH" ]; then FILE_PATH="runner/generated.spec.ts"; fi
+          DIR_PATH=$(dirname "$FILE_PATH")
+          mkdir -p "$DIR_PATH"
 
       - name: Write Generated Test
         run: |
-          cat << 'EOF' > ${{ github.event.inputs.scriptFileName }}
-          ${{ github.event.inputs.scriptContent }}
-          EOF
+          FILE_PATH="${{ github.event.inputs.scriptFileName }}"
+          CONTENT="${{ github.event.inputs.scriptContent }}"
+
+          if [ -z "$FILE_PATH" ]; then FILE_PATH="runner/generated.spec.ts"; fi
+
+          cat > "$FILE_PATH" << 'EOF'
+$CONTENT
+EOF
 
       - name: Install Playwright
         run: npx playwright install
 
       - name: Run Playwright Tests
-        run: npx playwright test ${{ github.event.inputs.scriptFileName }}
+        run: npx playwright test "${{ github.event.inputs.scriptFileName }}"
 
       - name: Upload Test Artifacts
         if: always()
