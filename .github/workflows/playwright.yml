@@ -39,31 +39,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci || npm install
 
       - name: Ensure Directory Exists
-        run: |
-          FILE_PATH="${{ github.event.inputs.scriptFileName }}"
-          if [ -z "$FILE_PATH" ]; then FILE_PATH="runner/generated.spec.ts"; fi
-          DIR_PATH=$(dirname "$FILE_PATH")
-          mkdir -p "$DIR_PATH"
+        run: mkdir -p "$(dirname "${{ github.event.inputs.scriptFileName }}")"
 
       - name: Write Generated Test
         run: |
-          FILE_PATH="${{ github.event.inputs.scriptFileName }}"
-          CONTENT="${{ github.event.inputs.scriptContent }}"
+          echo "${{ github.event.inputs.scriptContent }}" > "${{ github.event.inputs.scriptFileName }}"
 
-          if [ -z "$FILE_PATH" ]; then FILE_PATH="runner/generated.spec.ts"; fi
-
-          cat > "$FILE_PATH" << 'EOF'
-$CONTENT
-EOF
-
-      - name: Install Playwright
-        run: npx playwright install
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
 
       - name: Run Playwright Tests
         run: npx playwright test "${{ github.event.inputs.scriptFileName }}"
@@ -81,4 +70,3 @@ EOF
         if: always()
         run: |
           echo "executionId=${{ github.event.inputs.executionId }}"
-          echo "status=$?"
