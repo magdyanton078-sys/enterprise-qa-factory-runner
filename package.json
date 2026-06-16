@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "test": "playwright test",
-    "test:ci": "playwright test",
+    "test:ci": "playwright test --reporter=html,json,junit",
     "clean": "rm -rf playwright-report test-results"
   },
   "devDependencies": {
