@@ -27,7 +27,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
 
       # 3) Debug workspace
       - name: Debug Workspace
@@ -35,24 +34,28 @@ jobs:
           pwd
           ls -la
 
-      # 4) Install dependencies (CI safe)
+      # 4) Install Dependencies (SAFE MODE)
       - name: Install Dependencies
         run: |
-          npm ci || npm install
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
-      # 5) Clean previous results (IMPORTANT)
+      # 5) Clean old outputs (non-fatal)
       - name: Clean Previous Results
         run: |
-          npm run clean || true
+          rm -rf test-results playwright-report generated-tests || true
 
-      # 6) Ensure directories exist (safe)
+      # 6) Ensure directories (SAFE)
       - name: Ensure Directories Exist
         run: |
           mkdir -p test-results
           mkdir -p playwright-report
           mkdir -p generated-tests
 
-      # 7) Generate Playwright Test
+      # 7) Generate Playwright Test File
       - name: Generate Test File
         run: |
           cat > generated-tests/generated.spec.ts << 'EOF'
@@ -71,11 +74,11 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
-      # 9) Run tests using CI script (IMPORTANT FIX)
+      # 9) Run Tests (DIRECT - NO EXTRA SCRIPT DEPENDENCY)
       - name: Run Playwright Tests
-        run: npm run test:ci
+        run: npx playwright test generated-tests/generated.spec.ts
 
-      # 10) Upload artifacts (REAL OUTPUTS ONLY)
+      # 10) Upload Artifacts
       - name: Upload Test Artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -86,19 +89,17 @@ jobs:
             test-results/
             generated-tests/
 
-      # 11) Execution Summary (NO FAKE LOGIC)
+      # 11) Execution Summary
       - name: Execution Summary
         if: always()
         run: |
           echo "Execution ID: ${{ github.event.inputs.executionId }}"
           echo "User Request: ${{ github.event.inputs.userRequest }}"
           echo "Run ID: ${{ github.run_id }}"
-          echo "=== Node Version ==="
           node -v
-          echo "=== NPM Version ==="
           npm -v
 
-      # 12) Verify Results Exist (IMPORTANT FOR QA FACTORY)
+      # 12) Validate Outputs
       - name: Validate Execution Output
         if: always()
         run: |
