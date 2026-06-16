@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "scripts": {
     "test": "playwright test",
-    "postinstall": "playwright install"
+    "test:ci": "playwright test --reporter=html,json,junit",
+    "prepare": "playwright install",
+    "postinstall": "playwright install",
+    "clean": "rm -rf playwright-report test-results"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0"
