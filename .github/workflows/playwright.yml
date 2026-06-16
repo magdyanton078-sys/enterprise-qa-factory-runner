@@ -18,47 +18,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Checkout Repo
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      # 2) Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      # 3) Debug workspace
-      - name: Debug Workspace
-        run: |
-          pwd
-          ls -la
-
-      # 4) Install Dependencies (SAFE MODE)
       - name: Install Dependencies
         run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
+          npm install
 
-      # 5) Clean old outputs (non-fatal)
       - name: Clean Previous Results
         run: |
-          rm -rf test-results playwright-report generated-tests || true
+          npm run clean || true
 
-      # 6) Ensure directories (SAFE)
-      - name: Ensure Directories Exist
+      - name: Ensure Directories
         run: |
+          mkdir -p runner
           mkdir -p test-results
           mkdir -p playwright-report
-          mkdir -p generated-tests
 
-      # 7) Generate Playwright Test File
       - name: Generate Test File
         run: |
-          cat > generated-tests/generated.spec.ts << 'EOF'
+          cat > runner/generated.spec.ts << 'EOF'
           import { test, expect } from '@playwright/test';
 
           test('Generated Test', async ({ page }) => {
@@ -70,16 +54,13 @@ jobs:
           });
           EOF
 
-      # 8) Install Playwright Browsers
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
-      # 9) Run Tests (DIRECT - NO EXTRA SCRIPT DEPENDENCY)
       - name: Run Playwright Tests
-        run: npx playwright test generated-tests/generated.spec.ts
+        run: npm run test:ci
 
-      # 10) Upload Artifacts
-      - name: Upload Test Artifacts
+      - name: Upload Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -87,22 +68,12 @@ jobs:
           path: |
             playwright-report/
             test-results/
-            generated-tests/
+            runner/
 
-      # 11) Execution Summary
       - name: Execution Summary
         if: always()
         run: |
           echo "Execution ID: ${{ github.event.inputs.executionId }}"
           echo "User Request: ${{ github.event.inputs.userRequest }}"
-          echo "Run ID: ${{ github.run_id }}"
           node -v
           npm -v
-
-      # 12) Validate Outputs
-      - name: Validate Execution Output
-        if: always()
-        run: |
-          echo "Checking results..."
-          ls -la test-results || echo "No test-results found"
-          ls -la playwright-report || echo "No report found"
