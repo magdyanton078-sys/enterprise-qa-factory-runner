@@ -4,8 +4,6 @@
   "scripts": {
     "test": "playwright test",
     "test:ci": "playwright test --reporter=html,json,junit",
-    "prepare": "playwright install",
-    "postinstall": "playwright install",
     "clean": "rm -rf playwright-report test-results"
   },
   "devDependencies": {
