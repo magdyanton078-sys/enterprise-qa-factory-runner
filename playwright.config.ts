@@ -23,15 +23,8 @@ export default defineConfig({
   },
 
   reporter: [
-    // 1️⃣ Human report
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
-
-    // 2️⃣ IMPORTANT: Machine-readable report
     ['json', { outputFile: 'test-results/results.json' }],
-
-    // 3️⃣ CI-friendly report
     ['junit', { outputFile: 'test-results/junit.xml' }],
   ],
-
-  outputDir: 'test-results/',
 });
