@@ -3,13 +3,17 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './runner',
 
-  timeout: 30 * 1000,
+  fullyParallel: true,
+
+  forbidOnly: !!process.env.CI,
+
+  retries: process.env.CI ? 2 : 1,
+
+  timeout: 30000,
 
   expect: {
     timeout: 5000,
   },
-
-  retries: process.env.CI ? 2 : 1,
 
   use: {
     headless: true,
@@ -18,13 +22,13 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
 
-    actionTimeout: 10 * 1000,
-    navigationTimeout: 20 * 1000,
+    actionTimeout: 10000,
+    navigationTimeout: 20000,
   },
 
   reporter: [
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['json', { outputFile: 'test-results/results.json' }],
-    ['junit', { outputFile: 'test-results/junit.xml' }],
+    ['junit', { outputFile: 'test-results/junit.xml' }]
   ],
 });
