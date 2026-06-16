@@ -1,69 +1,100 @@
 name: Run Playwright
 
 on:
-  workflow_dispatch:
-    inputs:
-      userRequest:
-        required: true
-        type: string
+workflow_dispatch:
+inputs:
+userRequest:
+description: "User testing request"
+required: true
+type: string
 
-      executionId:
-        required: false
-        type: string
+```
+  executionId:
+    description: "Execution ID"
+    required: false
+    type: string
+```
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+test:
+runs-on: ubuntu-latest
 
-    steps:
-      # 1) Checkout Repo
-      - name: Checkout Repo
-        uses: actions/checkout@v4
+```
+steps:
+  # Checkout Repository
+  - name: Checkout Repo
+    uses: actions/checkout@v4
 
-      # 2) Setup Node.js
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+  # Setup Node.js
+  - name: Setup Node.js
+    uses: actions/setup-node@v5
+    with:
+      node-version: 22
 
-      # 3) Install Dependencies
-      - name: Install Dependencies
-        run: |
-          npm ci || npm install
+  # Debug Workspace
+  - name: Debug Workspace
+    run: |
+      pwd
+      ls -la
 
-      # 4) Ensure Directory Exists
-      - name: Ensure Directory Exists
-        run: |
-          mkdir -p runner
+  # Install Dependencies
+  - name: Install Dependencies
+    run: |
+      if [ -f package-lock.json ]; then
+        npm ci
+      else
+        npm install
+      fi
 
-      # 5) Generate Test File
-      - name: Generate Test File
-        run: |
-          cat <<EOF > runner/generated.spec.ts
-          import { test, expect } from '@playwright/test';
+  # Ensure Test Directory Exists
+  - name: Ensure Directory Exists
+    run: |
+      mkdir -p generated-tests
 
-          test('Generated Test', async ({ page }) => {
-            console.log("User Request: ${{ github.event.inputs.userRequest }}");
+  # Generate Playwright Test File
+  - name: Generate Test File
+    run: |
+      cat > generated-tests/generated.spec.ts << 'EOF'
+      import { test, expect } from '@playwright/test';
 
-            await page.goto('https://qacart.com/');
+      test('Generated Test', async ({ page }) => {
 
-            await expect(page).toHaveTitle(/QAcart|QA/i);
-          });
-          EOF
+        console.log('User Request Received');
 
-      # 6) Install Playwright Browsers
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+        await page.goto('https://qacart.com/');
 
-      # 7) Run Playwright Tests
-      - name: Run Playwright Tests
-        run: npx playwright test runner/generated.spec.ts
+        await expect(page).toHaveTitle(/QAcart|QA/i);
 
-      # 8) Post Setup Node.js
-      - name: Post Setup Node.js
-        if: always()
-        run: |
-          echo "Execution ID: ${{ github.event.inputs.executionId }}"
-          echo "User Request: ${{ github.event.inputs.userRequest }}"
-          node -v
-          npm -v
+      });
+      EOF
+
+  # Install Playwright Browsers
+  - name: Install Playwright Browsers
+    run: |
+      npx playwright install --with-deps
+
+  # Run Playwright Tests
+  - name: Run Playwright Tests
+    run: |
+      npx playwright test generated-tests/generated.spec.ts
+
+  # Upload Reports
+  - name: Upload Test Artifacts
+    if: always()
+    uses: actions/upload-artifact@v4
+    with:
+      name: playwright-results-${{ github.run_id }}
+      path: |
+        playwright-report/
+        test-results/
+
+  # Execution Summary
+  - name: Execution Summary
+    if: always()
+    run: |
+      echo "Execution ID: ${{ github.event.inputs.executionId }}"
+      echo "User Request: ${{ github.event.inputs.userRequest }}"
+      echo "Run ID: ${{ github.run_id }}"
+      node -v
+      npm -v
+```
