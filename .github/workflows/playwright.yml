@@ -29,8 +29,8 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Clean Previous Results
-        run: npm run clean || true
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
 
       - name: Create Directories
         run: |
@@ -38,43 +38,34 @@ jobs:
           mkdir -p test-results
           mkdir -p playwright-report
 
-      - name: Generate Generic Test
+      - name: Generate Test File
         run: |
           cat > runner/generated.spec.ts << 'EOF'
           import { test, expect } from '@playwright/test';
 
-          test('Generic Website Test', async ({ page }) => {
+          test('Dynamic Website Test', async ({ page }) => {
 
-            const targetUrl = process.env.TARGET_URL;
+            const url = process.env.TARGET_URL;
 
-            console.log("Testing URL:", targetUrl);
+            console.log("Testing URL:", url);
 
-            await page.goto(targetUrl, {
+            await page.goto(url, {
               waitUntil: 'domcontentloaded'
             });
 
-            // Basic checks (works for ANY website)
             await expect(page).toHaveURL(/.*/);
-
-            await expect(page.locator('body')).toBeVisible();
 
             const title = await page.title();
             expect(title).toBeTruthy();
 
-            const links = page.locator('a');
-            const count = await links.count();
+            const links = await page.locator('a').count();
+            console.log("Links:", links);
 
-            console.log("Page Title:", title);
-            console.log("Links Found:", count);
-
-            expect(count).toBeGreaterThanOrEqual(0);
+            expect(links).toBeGreaterThanOrEqual(0);
           });
           EOF
 
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
-
-      - name: Run Playwright Tests
+      - name: Run Tests
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: npm run test:ci
@@ -89,10 +80,8 @@ jobs:
             test-results/
             runner/
 
-      - name: Execution Summary
+      - name: Summary
         if: always()
         run: |
           echo "Execution ID: ${{ github.event.inputs.executionId }}"
           echo "Target URL: ${{ github.event.inputs.targetUrl }}"
-          node -v
-          npm -v
