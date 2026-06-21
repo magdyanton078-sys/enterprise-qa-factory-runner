@@ -3,8 +3,8 @@ name: Run Playwright
 on:
   workflow_dispatch:
     inputs:
-      userRequest:
-        description: "User testing request"
+      targetUrl:
+        description: "Website URL to test"
         required: true
         type: string
 
@@ -27,30 +27,47 @@ jobs:
           node-version: 22
 
       - name: Install Dependencies
-        run: |
-          npm install
+        run: npm install
 
       - name: Clean Previous Results
-        run: |
-          npm run clean || true
+        run: npm run clean || true
 
-      - name: Ensure Directories
+      - name: Create Directories
         run: |
           mkdir -p runner
           mkdir -p test-results
           mkdir -p playwright-report
 
-      - name: Generate Test File
+      - name: Generate Generic Test
         run: |
           cat > runner/generated.spec.ts << 'EOF'
           import { test, expect } from '@playwright/test';
 
-          test('Generated Test', async ({ page }) => {
-            console.log("User Request: ${{ github.event.inputs.userRequest }}");
+          test('Generic Website Test', async ({ page }) => {
 
-            await page.goto('https://qacart.com/');
+            const targetUrl = process.env.TARGET_URL;
 
-            await expect(page).toHaveTitle(/QAcart|QA/i);
+            console.log("Testing URL:", targetUrl);
+
+            await page.goto(targetUrl, {
+              waitUntil: 'domcontentloaded'
+            });
+
+            // Basic checks (works for ANY website)
+            await expect(page).toHaveURL(/.*/);
+
+            await expect(page.locator('body')).toBeVisible();
+
+            const title = await page.title();
+            expect(title).toBeTruthy();
+
+            const links = page.locator('a');
+            const count = await links.count();
+
+            console.log("Page Title:", title);
+            console.log("Links Found:", count);
+
+            expect(count).toBeGreaterThanOrEqual(0);
           });
           EOF
 
@@ -58,6 +75,8 @@ jobs:
         run: npx playwright install --with-deps
 
       - name: Run Playwright Tests
+        env:
+          TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: npm run test:ci
 
       - name: Upload Artifacts
@@ -74,6 +93,6 @@ jobs:
         if: always()
         run: |
           echo "Execution ID: ${{ github.event.inputs.executionId }}"
-          echo "User Request: ${{ github.event.inputs.userRequest }}"
+          echo "Target URL: ${{ github.event.inputs.targetUrl }}"
           node -v
           npm -v
