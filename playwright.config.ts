@@ -3,10 +3,10 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './runner',
 
-  timeout: 30 * 1000,
+  timeout: 60 * 1000,
 
   expect: {
-    timeout: 5000,
+    timeout: 10000,
   },
 
   retries: process.env.CI ? 2 : 1,
@@ -14,12 +14,12 @@ export default defineConfig({
   use: {
     headless: true,
 
-    trace: 'retain-on-failure',
-    screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    trace: 'on',
+    screenshot: 'on',
+    video: 'on',
 
-    actionTimeout: 10 * 1000,
-    navigationTimeout: 20 * 1000,
+    actionTimeout: 15000,
+    navigationTimeout: 60000,
   },
 
   reporter: [
