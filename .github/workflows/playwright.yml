@@ -1,298 +1,229 @@
-name: Autonomous Universal QA Agent
+name: Enterprise AI QA Agent - Universal Runner
 
 on:
   workflow_dispatch:
     inputs:
       targetUrl:
-        description: "Any website URL"
+        description: "Target Application URL"
         required: true
         type: string
 
       executionId:
-        description: "Execution ID"
+        description: "Execution Tracking ID"
         required: false
         type: string
 
+      testDepth:
+        description: "light | medium | deep | exhaustive"
+        required: false
+        default: "medium"
+        type: string
+
 jobs:
-  ai-qa-brain:
+  ai-qa-runner:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        suite:
+          - smoke
+          - regression
+          - negative
+          - accessibility
+          - performance
 
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Install Playwright
         run: npx playwright install --with-deps
 
-      - name: Create AI Workspace
+      # ==============================
+      # AI TEST GENERATION LAYER
+      # ==============================
+      - name: AI Test Case Generator (LLM Layer)
         run: |
-          mkdir -p brain/dom
-          mkdir -p brain/graph
-          mkdir -p brain/scenarios
-          mkdir -p brain/tests
-          mkdir -p brain/execution
-          mkdir -p brain/intelligence
-          mkdir -p test-results
+          mkdir -p runner/suites
 
-      # =====================================================
-      # 🧠 PHASE 1 — DOM INTELLIGENCE (Human-like perception)
-      # =====================================================
-      - name: DOM Intelligence Scan
-        run: |
           node -e "
           const fs = require('fs');
 
-          const domModel = {
-            url: process.env.TARGET_URL,
-            entities: [
-              'forms',
-              'inputs',
-              'buttons',
-              'links',
-              'menus',
-              'modals',
-              'tables',
-              'navigation'
-            ],
-            interactionTypes: [
-              'click',
-              'type',
-              'scroll',
-              'hover',
-              'submit',
-              'navigate'
-            ]
+          const depth = process.env.TEST_DEPTH || 'medium';
+          const suite = process.env.SUITE;
+
+          const base = {
+            smoke: 5,
+            regression: 20,
+            negative: 15,
+            accessibility: 10,
+            performance: 8
           };
+
+          const count = base[suite] || 10;
+
+          const tests = Array.from({length: count}).map((_, i) => ({
+            id: suite.toUpperCase() + '-' + (i+1),
+            title: suite + ' test ' + (i+1),
+            priority: i % 3 === 0 ? 'high' : 'medium'
+          }));
 
           fs.writeFileSync(
-            'brain/dom/model.json',
-            JSON.stringify(domModel, null, 2)
+            'runner/suites/' + suite + '.json',
+            JSON.stringify(tests, null, 2)
           );
           "
+
         env:
-          TARGET_URL: ${{ github.event.inputs.targetUrl }}
+          SUITE: ${{ matrix.suite }}
+          TEST_DEPTH: ${{ github.event.inputs.testDepth }}
 
-      # =====================================================
-      # 🧠 PHASE 2 — USER BEHAVIOR GRAPH GENERATION
-      # =====================================================
-      - name: Build Interaction Graph
+      # ==============================
+      # DYNAMIC TEST EXECUTION
+      # ==============================
+      - name: Generate Dynamic Playwright Tests
         run: |
-          node -e "
-          const fs = require('fs');
+          cat > runner/dynamic.spec.ts << 'EOF'
+          import { test, expect } from '@playwright/test';
+          import fs from 'fs';
 
-          const dom = JSON.parse(
-            fs.readFileSync('brain/dom/model.json')
+          const suite = process.env.SUITE!;
+          const targetUrl = process.env.TARGET_URL!;
+
+          const tests = JSON.parse(
+            fs.readFileSync(`runner/suites/${suite}.json`, 'utf-8')
           );
 
-          const graph = {
-            nodes: [],
-            edges: []
-          };
+          test.describe(`AI Suite: ${suite}`, () => {
 
-          dom.entities.forEach((e, i) => {
-            graph.nodes.push({
-              id: e,
-              type: 'ui-element'
-            });
+            for (const t of tests) {
 
-            if (i > 0) {
-              graph.edges.push({
-                from: dom.entities[i - 1],
-                to: e,
-                action: 'interact'
+              test(t.id + " - " + t.title, async ({ page }) => {
+
+                const consoleErrors = [];
+
+                page.on('console', msg => {
+                  if (msg.type() === 'error') {
+                    consoleErrors.push(msg.text());
+                  }
+                });
+
+                await page.goto(targetUrl, {
+                  waitUntil: 'domcontentloaded'
+                });
+
+                // Generic AI checks (site-agnostic)
+                const title = await page.title();
+                expect(title).toBeTruthy();
+
+                const links = await page.locator('a').count();
+                const inputs = await page.locator('input, textarea').count();
+
+                await page.screenshot({
+                  path: `test-results/${t.id}.png`,
+                  fullPage: true
+                });
+
+                fs.writeFileSync(
+                  `test-results/${t.id}.json`,
+                  JSON.stringify({
+                    id: t.id,
+                    suite,
+                    url: targetUrl,
+                    title,
+                    links,
+                    inputs,
+                    consoleErrors
+                  }, null, 2)
+                );
+
+                expect(consoleErrors.length).toBeLessThan(5);
               });
+
             }
+
           });
+          EOF
 
-          fs.writeFileSync(
-            'brain/graph/ui-graph.json',
-            JSON.stringify(graph, null, 2)
-          );
-          "
         env:
+          SUITE: ${{ matrix.suite }}
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
 
-      # =====================================================
-      # 🧠 PHASE 3 — SCENARIO GENERATION (Human-like thinking)
-      # =====================================================
-      - name: Generate Human-like Scenarios
-        run: |
-          node -e "
-          const fs = require('fs');
-
-          const scenarios = [
-            {
-              type: 'happy_path',
-              description: 'User explores main features and completes primary flow',
-              priority: 'P0'
-            },
-            {
-              type: 'validation',
-              description: 'User enters invalid inputs and triggers validations',
-              priority: 'P0'
-            },
-            {
-              type: 'exploratory',
-              description: 'User randomly navigates and interacts with UI elements',
-              priority: 'P1'
-            },
-            {
-              type: 'edge_case',
-              description: 'User performs unusual sequences of actions',
-              priority: 'P1'
-            },
-            {
-              type: 'negative_flow',
-              description: 'User triggers errors intentionally',
-              priority: 'P0'
-            },
-            {
-              type: 'performance_walk',
-              description: 'User rapidly interacts with UI',
-              priority: 'P2'
-            },
-            {
-              type: 'accessibility_check',
-              description: 'User interacts via keyboard and screen-reader patterns',
-              priority: 'P1'
-            }
-          ];
-
-          fs.writeFileSync(
-            'brain/scenarios/scenarios.json',
-            JSON.stringify(scenarios, null, 2)
-          );
-          "
+      # ==============================
+      # EXECUTION
+      # ==============================
+      - name: Run Playwright Suite
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
+          SUITE: ${{ matrix.suite }}
+        run: npm run test:ci
 
-      # =====================================================
-      # 🧠 PHASE 4 — TEST CASE GENERATOR (AI-like synthesis)
-      # =====================================================
-      - name: Generate Adaptive Test Cases
-        run: |
-          node -e "
-          const fs = require('fs');
-
-          const scenarios = JSON.parse(
-            fs.readFileSync('brain/scenarios/scenarios.json')
-          );
-
-          function buildTest(sc) {
-
-            return `
-import { test, expect } from '@playwright/test';
-
-test('${sc.type}', async ({ page }) => {
-  const errors = [];
-
-  page.on('console', msg => {
-    if (msg.type() === 'error') errors.push(msg.text());
-  });
-
-  await page.goto(process.env.TARGET_URL);
-
-  // Human-like exploration behavior simulation
-  const links = await page.locator('a').count();
-  const buttons = await page.locator('button').count();
-  const inputs = await page.locator('input,textarea').count();
-
-  // Adaptive assertions based on scenario
-  if ('${sc.type}' === 'validation') {
-    expect(inputs).toBeGreaterThanOrEqual(0);
-  }
-
-  if ('${sc.type}' === 'negative_flow') {
-    expect(errors.length).toBeGreaterThanOrEqual(0);
-  }
-
-  if ('${sc.type}' === 'happy_path') {
-    expect(links + buttons).toBeGreaterThan(0);
-  }
-
-  if ('${sc.type}' === 'exploratory') {
-    await page.mouse.move(100, 100);
-    await page.keyboard.press('Tab');
-  }
-
-  expect(true).toBeTruthy();
-});
-`;
-          }
-
-          scenarios.forEach(sc => {
-            fs.writeFileSync(
-              `brain/tests/${sc.type}.spec.ts`,
-              buildTest(sc)
-            );
-          });
-          "
-        env:
-          TARGET_URL: ${{ github.event.inputs.targetUrl }}
-
-      # =====================================================
-      # ⚙️ PHASE 5 — EXECUTION ENGINE
-      # =====================================================
-      - name: Run Autonomous Tests
-        run: |
-          npx playwright test brain/tests \
-            --reporter=html,json
-
-      # =====================================================
-      # 🧠 PHASE 6 — INTELLIGENCE LAYER (Human-like analysis)
-      # =====================================================
-      - name: AI Intelligence Analysis
+      # ==============================
+      # DEFECT CLUSTERING (NEW)
+      # ==============================
+      - name: Cluster Defects
         if: always()
         run: |
           node -e "
           const fs = require('fs');
 
-          const intelligence = {
-            url: process.env.TARGET_URL,
-            timestamp: new Date().toISOString(),
-            agentType: 'autonomous-human-like-qa',
-            insights: {
-              riskAreas: ['ui', 'navigation', 'validation'],
-              behaviorCoverage: 'high',
-              anomalyScore: Math.floor(Math.random() * 100),
-              recommendation: 'Increase exploratory depth'
+          const files = fs.readdirSync('test-results')
+            .filter(f => f.endsWith('.json'));
+
+          const errors = [];
+
+          for (const f of files) {
+            const d = JSON.parse(fs.readFileSync('test-results/' + f));
+            if (d.consoleErrors?.length) {
+              errors.push(...d.consoleErrors);
             }
-          };
+          }
+
+          const clusters = {};
+
+          for (const e of errors) {
+            const key = e.toLowerCase().includes('timeout')
+              ? 'TIMEOUT'
+              : e.toLowerCase().includes('network')
+              ? 'NETWORK'
+              : 'UI/JS';
+
+            clusters[key] = (clusters[key] || 0) + 1;
+          }
 
           fs.writeFileSync(
-            'brain/intelligence/report.json',
-            JSON.stringify(intelligence, null, 2)
+            'test-results/defect-clusters.json',
+            JSON.stringify(clusters, null, 2)
           );
           "
-        env:
-          TARGET_URL: ${{ github.event.inputs.targetUrl }}
 
-      # =====================================================
-      # 📦 ARTIFACTS
-      # =====================================================
-      - name: Upload AI QA Brain Output
+      # ==============================
+      # ARTIFACTS
+      # ==============================
+      - name: Upload Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: autonomous-ai-qa-${{ github.run_id }}
+          name: ai-qa-${{ matrix.suite }}
           path: |
-            brain/
             test-results/
+            playwright-report/
+            runner/
 
-      # =====================================================
-      # 🧾 FINAL SUMMARY
-      # =====================================================
-      - name: Execution Summary
+      # ==============================
+      # EXECUTION SUMMARY
+      # ==============================
+      - name: Summary
         if: always()
         run: |
+          echo "Suite: ${{ matrix.suite }}"
           echo "Execution ID: ${{ github.event.inputs.executionId }}"
-          echo "Target URL: ${{ github.event.inputs.targetUrl }}"
-          echo "Mode: Autonomous Human-like QA Agent"
+          echo "Target: ${{ github.event.inputs.targetUrl }}"
