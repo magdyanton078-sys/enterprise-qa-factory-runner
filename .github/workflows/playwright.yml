@@ -38,30 +38,96 @@ jobs:
           mkdir -p test-results
           mkdir -p playwright-report
 
-      - name: Generate Test File
+      - name: Generate Dynamic Test
         run: |
           cat > runner/generated.spec.ts << 'EOF'
           import { test, expect } from '@playwright/test';
+          import fs from 'fs';
 
-          test('Dynamic Website Test', async ({ page }) => {
+          test('Dynamic QA Discovery', async ({ page }) => {
 
-            const url = process.env.TARGET_URL;
+            const url = process.env.TARGET_URL!;
 
-            console.log("Testing URL:", url);
+            const consoleErrors: string[] = [];
+            const networkFailures: any[] = [];
 
-            await page.goto(url, {
-              waitUntil: 'domcontentloaded'
+            page.on('console', msg => {
+              if (msg.type() === 'error') {
+                consoleErrors.push(msg.text());
+              }
             });
 
-            await expect(page).toHaveURL(/.*/);
+            page.on('response', response => {
+              if (response.status() >= 400) {
+                networkFailures.push({
+                  url: response.url(),
+                  status: response.status()
+                });
+              }
+            });
+
+            console.log('Testing URL:', url);
+
+            await page.goto(url, {
+              waitUntil: 'networkidle',
+              timeout: 60000
+            });
+
+            await page.waitForTimeout(5000);
 
             const title = await page.title();
+
+            const buttons =
+              await page.locator('button,[role="button"]').count();
+
+            const inputs =
+              await page.locator(
+                'input,textarea,[role="textbox"]'
+              ).count();
+
+            const dropdowns =
+              await page.locator(
+                'select,[role="combobox"]'
+              ).count();
+
+            const links =
+              await page.locator('a').count();
+
+            const dom =
+              await page.content();
+
+            await page.screenshot({
+              path: 'test-results/homepage.png',
+              fullPage: true
+            });
+
+            fs.writeFileSync(
+              'test-results/dom.html',
+              dom
+            );
+
+            const report = {
+              executionTime: new Date().toISOString(),
+              url,
+              title,
+              buttons,
+              inputs,
+              dropdowns,
+              links,
+              consoleErrors,
+              networkFailures
+            };
+
+            fs.writeFileSync(
+              'test-results/discovery.json',
+              JSON.stringify(report, null, 2)
+            );
+
+            console.log(
+              JSON.stringify(report, null, 2)
+            );
+
             expect(title).toBeTruthy();
-
-            const links = await page.locator('a').count();
-            console.log("Links:", links);
-
-            expect(links).toBeGreaterThanOrEqual(0);
           });
           EOF
 
@@ -69,6 +135,13 @@ jobs:
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: npm run test:ci
+
+      - name: Show Discovery Report
+        if: always()
+        run: |
+          echo "========== DISCOVERY REPORT =========="
+          cat test-results/discovery.json || true
+          echo "======================================"
 
       - name: Upload Artifacts
         if: always()
