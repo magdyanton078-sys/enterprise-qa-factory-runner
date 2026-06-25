@@ -1,4 +1,4 @@
-name: Enterprise AI QA Agent - Universal Runner
+name: Enterprise AI QA Agent - Truth Execution Engine
 
 on:
   workflow_dispatch:
@@ -20,7 +20,7 @@ on:
         type: string
 
 jobs:
-  ai-qa-runner:
+  ai-qa-agent:
     runs-on: ubuntu-latest
 
     strategy:
@@ -33,197 +33,242 @@ jobs:
           - performance
 
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+    # ==============================
+    # 1. SETUP
+    # ==============================
+    - name: Checkout Repo
+      uses: actions/checkout@v4
 
-      - name: Install Dependencies
-        run: npm ci
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
 
-      - name: Install Playwright
-        run: npx playwright install --with-deps
+    - name: Install Dependencies
+      run: npm ci
 
-      # ==============================
-      # AI TEST GENERATION LAYER
-      # ==============================
-      - name: AI Test Case Generator (LLM Layer)
-        run: |
-          mkdir -p runner/suites
+    - name: Install Playwright
+      run: npx playwright install --with-deps
 
-          node -e "
-          const fs = require('fs');
+    # ==============================
+    # 2. AI TEST GENERATION (NO EXECUTION HERE)
+    # ==============================
+    - name: AI Test Case Generator (LLM Layer ONLY)
+      run: |
+        mkdir -p runner/suites
 
-          const depth = process.env.TEST_DEPTH || 'medium';
-          const suite = process.env.SUITE;
+        node -e "
+        const fs = require('fs');
 
-          const base = {
-            smoke: 5,
-            regression: 20,
-            negative: 15,
-            accessibility: 10,
-            performance: 8
-          };
+        const suite = process.env.SUITE;
+        const depth = process.env.TEST_DEPTH || 'medium';
 
-          const count = base[suite] || 10;
+        const baseCount = {
+          smoke: 5,
+          regression: 20,
+          negative: 15,
+          accessibility: 10,
+          performance: 8
+        };
 
-          const tests = Array.from({length: count}).map((_, i) => ({
-            id: suite.toUpperCase() + '-' + (i+1),
-            title: suite + ' test ' + (i+1),
-            priority: i % 3 === 0 ? 'high' : 'medium'
-          }));
+        const count = baseCount[suite] || 10;
 
-          fs.writeFileSync(
-            'runner/suites/' + suite + '.json',
-            JSON.stringify(tests, null, 2)
-          );
-          "
+        const tests = Array.from({ length: count }).map((_, i) => ({
+          id: `${suite.toUpperCase()}-TC-${i+1}`,
+          suite,
+          priority: i % 3 === 0 ? 'high' : 'medium',
+          strategy: 'ai-generated'
+        }));
 
-        env:
-          SUITE: ${{ matrix.suite }}
-          TEST_DEPTH: ${{ github.event.inputs.testDepth }}
+        fs.writeFileSync(
+          `runner/suites/${suite}.json`,
+          JSON.stringify(tests, null, 2)
+        );
+        "
 
-      # ==============================
-      # DYNAMIC TEST EXECUTION
-      # ==============================
-      - name: Generate Dynamic Playwright Tests
-        run: |
-          cat > runner/dynamic.spec.ts << 'EOF'
-          import { test, expect } from '@playwright/test';
-          import fs from 'fs';
+      env:
+        SUITE: ${{ matrix.suite }}
+        TEST_DEPTH: ${{ github.event.inputs.testDepth }}
 
-          const suite = process.env.SUITE!;
-          const targetUrl = process.env.TARGET_URL!;
+    # ==============================
+    # 3. GENERATE PLAYWRIGHT TESTS (GENERIC + SAFE)
+    # ==============================
+    - name: Generate Playwright Suite
+      run: |
+        cat > runner/dynamic.spec.ts << 'EOF'
+        import { test, expect } from '@playwright/test';
+        import fs from 'fs';
 
-          const tests = JSON.parse(
-            fs.readFileSync(`runner/suites/${suite}.json`, 'utf-8')
-          );
+        const suite = process.env.SUITE!;
+        const targetUrl = process.env.TARGET_URL!;
 
-          test.describe(`AI Suite: ${suite}`, () => {
+        const tests = JSON.parse(
+          fs.readFileSync(`runner/suites/${suite}.json`, 'utf-8')
+        );
 
-            for (const t of tests) {
+        test.describe(`AI QA Suite: ${suite}`, () => {
 
-              test(t.id + " - " + t.title, async ({ page }) => {
+          for (const t of tests) {
 
-                const consoleErrors = [];
+            test(`[${t.id}] - runtime validation`, async ({ page }) => {
 
-                page.on('console', msg => {
-                  if (msg.type() === 'error') {
-                    consoleErrors.push(msg.text());
-                  }
-                });
+              const consoleErrors = [];
+              const networkErrors = [];
 
-                await page.goto(targetUrl, {
-                  waitUntil: 'domcontentloaded'
-                });
-
-                // Generic AI checks (site-agnostic)
-                const title = await page.title();
-                expect(title).toBeTruthy();
-
-                const links = await page.locator('a').count();
-                const inputs = await page.locator('input, textarea').count();
-
-                await page.screenshot({
-                  path: `test-results/${t.id}.png`,
-                  fullPage: true
-                });
-
-                fs.writeFileSync(
-                  `test-results/${t.id}.json`,
-                  JSON.stringify({
-                    id: t.id,
-                    suite,
-                    url: targetUrl,
-                    title,
-                    links,
-                    inputs,
-                    consoleErrors
-                  }, null, 2)
-                );
-
-                expect(consoleErrors.length).toBeLessThan(5);
+              page.on('console', msg => {
+                if (msg.type() === 'error') consoleErrors.push(msg.text());
               });
 
-            }
+              page.on('response', res => {
+                if (res.status() >= 400) {
+                  networkErrors.push({
+                    url: res.url(),
+                    status: res.status()
+                  });
+                }
+              });
 
-          });
-          EOF
+              // REAL EXECUTION ONLY
+              const response = await page.goto(targetUrl, {
+                waitUntil: 'domcontentloaded'
+              });
 
-        env:
-          SUITE: ${{ matrix.suite }}
-          TARGET_URL: ${{ github.event.inputs.targetUrl }}
+              expect(response?.ok()).toBeTruthy();
 
-      # ==============================
-      # EXECUTION
-      # ==============================
-      - name: Run Playwright Suite
-        env:
-          TARGET_URL: ${{ github.event.inputs.targetUrl }}
-          SUITE: ${{ matrix.suite }}
-        run: npm run test:ci
+              // Generic universal assertions (NO DOMAIN ASSUMPTIONS)
+              const title = await page.title();
+              expect(title).toBeTruthy();
 
-      # ==============================
-      # DEFECT CLUSTERING (NEW)
-      # ==============================
-      - name: Cluster Defects
-        if: always()
-        run: |
-          node -e "
-          const fs = require('fs');
+              const domSize = (await page.content()).length;
 
-          const files = fs.readdirSync('test-results')
-            .filter(f => f.endsWith('.json'));
+              await page.screenshot({
+                path: `test-results/${t.id}.png`,
+                fullPage: true
+              });
 
-          const errors = [];
+              fs.writeFileSync(
+                `test-results/${t.id}.json`,
+                JSON.stringify({
+                  id: t.id,
+                  suite,
+                  url: targetUrl,
+                  title,
+                  domSize,
+                  consoleErrors,
+                  networkErrors,
+                  timestamp: new Date().toISOString()
+                }, null, 2)
+              );
 
-          for (const f of files) {
-            const d = JSON.parse(fs.readFileSync('test-results/' + f));
-            if (d.consoleErrors?.length) {
-              errors.push(...d.consoleErrors);
-            }
+              // HARD QUALITY GATE (REAL SIGNAL ONLY)
+              expect(consoleErrors.length).toBeLessThan(3);
+            });
+
           }
 
-          const clusters = {};
+        });
+        EOF
 
-          for (const e of errors) {
-            const key = e.toLowerCase().includes('timeout')
-              ? 'TIMEOUT'
-              : e.toLowerCase().includes('network')
-              ? 'NETWORK'
-              : 'UI/JS';
+      env:
+        SUITE: ${{ matrix.suite }}
+        TARGET_URL: ${{ github.event.inputs.targetUrl }}
 
-            clusters[key] = (clusters[key] || 0) + 1;
-          }
+    # ==============================
+    # 4. REAL EXECUTION (SOURCE OF TRUTH)
+    # ==============================
+    - name: Run Playwright Tests (TRUTH ENGINE)
+      env:
+        TARGET_URL: ${{ github.event.inputs.targetUrl }}
+        SUITE: ${{ matrix.suite }}
+      run: |
+        npx playwright test \
+          --reporter=json > test-results/raw-${{ matrix.suite }}.json
 
-          fs.writeFileSync(
-            'test-results/defect-clusters.json',
-            JSON.stringify(clusters, null, 2)
-          );
-          "
+    # ==============================
+    # 5. VERIFY EXECUTION (ANTI-FAKE LAYER)
+    # ==============================
+    - name: Validate Real Execution Output
+      run: |
+        node -e "
+        const fs = require('fs');
 
-      # ==============================
-      # ARTIFACTS
-      # ==============================
-      - name: Upload Results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ai-qa-${{ matrix.suite }}
-          path: |
-            test-results/
-            playwright-report/
-            runner/
+        const file = 'test-results/raw-${process.env.SUITE}.json';
+        const report = JSON.parse(fs.readFileSync(file));
 
-      # ==============================
-      # EXECUTION SUMMARY
-      # ==============================
-      - name: Summary
-        if: always()
-        run: |
-          echo "Suite: ${{ matrix.suite }}"
-          echo "Execution ID: ${{ github.event.inputs.executionId }}"
-          echo "Target: ${{ github.event.inputs.targetUrl }}"
+        if (!report.stats) {
+          throw new Error('INVALID EXECUTION REPORT - NO STATS FOUND');
+        }
+
+        const summary = {
+          passed: report.stats.expected,
+          failed: report.stats.unexpected,
+          flaky: report.stats.flaky
+        };
+
+        fs.writeFileSync(
+          'test-results/execution-summary.json',
+          JSON.stringify(summary, null, 2)
+        );
+
+        console.log('EXECUTION VERIFIED:', summary);
+        "
+      env:
+        SUITE: ${{ matrix.suite }}
+
+    # ==============================
+    # 6. DEFECT CLUSTERING (REAL DATA ONLY)
+    # ==============================
+    - name: Defect Clustering Engine
+      if: always()
+      run: |
+        node -e "
+        const fs = require('fs');
+
+        const files = fs.readdirSync('test-results')
+          .filter(f => f.endsWith('.json') && f.startsWith('TC'));
+
+        const clusters = {
+          console: 0,
+          network: 0,
+          assertion: 0
+        };
+
+        for (const f of files) {
+          const d = JSON.parse(fs.readFileSync('test-results/' + f));
+
+          (d.consoleErrors || []).forEach(() => clusters.console++);
+          (d.networkErrors || []).forEach(() => clusters.network++);
+        }
+
+        fs.writeFileSync(
+          'test-results/defect-clusters.json',
+          JSON.stringify(clusters, null, 2)
+        );
+        "
+
+    # ==============================
+    # 7. ARTIFACTS (FULL TRACEABILITY)
+    # ==============================
+    - name: Upload Evidence Pack
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ai-qa-evidence-${{ matrix.suite }}
+        path: |
+          test-results/
+          runner/
+          playwright-report/
+
+    # ==============================
+    # 8. FINAL SUMMARY (TRUTH ONLY)
+    # ==============================
+    - name: Execution Summary
+      if: always()
+      run: |
+        echo "=================================="
+        echo "AI QA AGENT EXECUTION COMPLETE"
+        echo "Suite: ${{ matrix.suite }}"
+        echo "Target: ${{ github.event.inputs.targetUrl }}"
+        echo "Execution ID: ${{ github.event.inputs.executionId }}"
+        echo "=================================="
