@@ -1,4 +1,4 @@
-name: Run Playwright
+name: Run Playwright - AI QA Agent
 
 on:
   workflow_dispatch:
@@ -38,13 +38,16 @@ jobs:
           mkdir -p test-results
           mkdir -p playwright-report
 
-      - name: Generate Dynamic Test
+      # =========================
+      # 1. GENERATE DISCOVERY TEST
+      # =========================
+      - name: Generate Dynamic Discovery Test
         run: |
           cat > runner/generated.spec.ts << 'EOF'
           import { test, expect } from '@playwright/test';
           import fs from 'fs';
 
-          test('Dynamic QA Discovery', async ({ page }) => {
+          test('Dynamic QA Discovery + Execution Layer', async ({ page }) => {
 
             const url = process.env.TARGET_URL!;
 
@@ -66,47 +69,33 @@ jobs:
               }
             });
 
-            console.log('Testing URL:', url);
-
             await page.goto(url, {
               waitUntil: 'networkidle',
               timeout: 60000
             });
 
-            await page.waitForTimeout(5000);
+            await page.waitForTimeout(3000);
 
             const title = await page.title();
 
-            const buttons =
-              await page.locator('button,[role="button"]').count();
+            const buttons = await page.locator('button,[role="button"]').count();
+            const inputs = await page.locator('input,textarea,[role="textbox"]').count();
+            const dropdowns = await page.locator('select,[role="combobox"]').count();
+            const links = await page.locator('a').count();
 
-            const inputs =
-              await page.locator(
-                'input,textarea,[role="textbox"]'
-              ).count();
-
-            const dropdowns =
-              await page.locator(
-                'select,[role="combobox"]'
-              ).count();
-
-            const links =
-              await page.locator('a').count();
-
-            const dom =
-              await page.content();
+            const dom = await page.content();
 
             await page.screenshot({
               path: 'test-results/homepage.png',
               fullPage: true
             });
 
-            fs.writeFileSync(
-              'test-results/dom.html',
-              dom
-            );
+            fs.writeFileSync('test-results/dom.html', dom);
 
-            const report = {
+            // =========================
+            // 2. DISCOVERY OUTPUT
+            // =========================
+            const discovery = {
               executionTime: new Date().toISOString(),
               url,
               title,
@@ -120,29 +109,98 @@ jobs:
 
             fs.writeFileSync(
               'test-results/discovery.json',
-              JSON.stringify(report, null, 2)
+              JSON.stringify(discovery, null, 2)
             );
 
-            console.log(
-              JSON.stringify(report, null, 2)
+            // =========================
+            // 3. AI-LIKE QA RULE ENGINE (NEW)
+            // =========================
+            const testResults: any[] = [];
+
+            // Basic Assertions (TURN DISCOVERY INTO QA SIGNALS)
+            testResults.push({
+              test: "Page loads successfully",
+              status: title ? "PASSED" : "FAILED"
+            });
+
+            testResults.push({
+              test: "Has interactive elements",
+              status: buttons + inputs > 0 ? "PASSED" : "FAILED"
+            });
+
+            testResults.push({
+              test: "No critical console errors",
+              status: consoleErrors.length === 0 ? "PASSED" : "FAILED",
+              details: consoleErrors
+            });
+
+            testResults.push({
+              test: "No major network failures",
+              status: networkFailures.length === 0 ? "PASSED" : "FAILED",
+              details: networkFailures
+            });
+
+            // Advanced heuristic checks
+            testResults.push({
+              test: "Page has usable navigation density",
+              status: links > 10 ? "PASSED" : "WARNING",
+              value: links
+            });
+
+            testResults.push({
+              test: "Form presence validation",
+              status: inputs > 0 ? "PASSED" : "WARNING"
+            });
+
+            fs.writeFileSync(
+              'test-results/qa-results.json',
+              JSON.stringify(testResults, null, 2)
             );
+
+            // =========================
+            // 4. FINAL CONSOLIDATED REPORT
+            // =========================
+            const finalReport = {
+              ...discovery,
+              qaResults: testResults,
+              overallStatus:
+                testResults.every(t => t.status === "PASSED")
+                  ? "HEALTHY"
+                  : "ISSUES_DETECTED"
+            };
+
+            fs.writeFileSync(
+              'test-results/final-report.json',
+              JSON.stringify(finalReport, null, 2)
+            );
+
+            console.log(JSON.stringify(finalReport, null, 2));
 
             expect(title).toBeTruthy();
           });
           EOF
 
+      # =========================
+      # 5. RUN TESTS
+      # =========================
       - name: Run Tests
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: npm run test:ci
 
-      - name: Show Discovery Report
+      # =========================
+      # 6. SHOW REPORT
+      # =========================
+      - name: Show Final Report
         if: always()
         run: |
-          echo "========== DISCOVERY REPORT =========="
-          cat test-results/discovery.json || true
-          echo "======================================"
+          echo "========== FINAL QA REPORT =========="
+          cat test-results/final-report.json || true
+          echo "====================================="
 
+      # =========================
+      # 7. UPLOAD ARTIFACTS
+      # =========================
       - name: Upload Artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -153,8 +211,12 @@ jobs:
             test-results/
             runner/
 
+      # =========================
+      # 8. SUMMARY
+      # =========================
       - name: Summary
         if: always()
         run: |
           echo "Execution ID: ${{ github.event.inputs.executionId }}"
           echo "Target URL: ${{ github.event.inputs.targetUrl }}"
+          echo "Status: AI QA Agent Execution Completed"
