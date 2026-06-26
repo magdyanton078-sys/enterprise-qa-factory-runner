@@ -1,30 +1,67 @@
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './runner',
 
-  timeout: 60 * 1000,
+    testDir: './generated-tests',
 
-  expect: {
-    timeout: 10000,
-  },
+    timeout: 60 * 1000,
 
-  retries: process.env.CI ? 2 : 1,
+    fullyParallel: true,
 
-  use: {
-    headless: true,
+    forbidOnly: !!process.env.CI,
 
-    trace: 'on',
-    screenshot: 'on',
-    video: 'on',
+    retries: process.env.CI ? 2 : 1,
 
-    actionTimeout: 15000,
-    navigationTimeout: 60000,
-  },
+    workers: process.env.CI ? 2 : undefined,
 
-  reporter: [
-    ['html', { outputFolder: 'playwright-report', open: 'never' }],
-    ['json', { outputFile: 'test-results/results.json' }],
-    ['junit', { outputFile: 'test-results/junit.xml' }],
-  ],
+    expect: {
+
+        timeout: 10000
+
+    },
+
+    use: {
+
+        headless: true,
+
+        trace: 'retain-on-failure',
+
+        screenshot: 'only-on-failure',
+
+        video: 'retain-on-failure',
+
+        actionTimeout: 15000,
+
+        navigationTimeout: 60000,
+
+        ignoreHTTPSErrors: true
+
+    },
+
+    reporter: [
+
+        [
+            'html',
+            {
+                outputFolder: 'playwright-report',
+                open: 'never'
+            }
+        ],
+
+        [
+            'json',
+            {
+                outputFile: 'test-results/playwright-results.json'
+            }
+        ],
+
+        [
+            'junit',
+            {
+                outputFile: 'test-results/junit.xml'
+            }
+        ]
+
+    ]
+
 });
