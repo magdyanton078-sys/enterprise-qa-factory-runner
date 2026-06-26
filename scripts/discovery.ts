@@ -538,7 +538,7 @@ return {
 
     accessibility,
 
-    performance,
+  performance: performanceData,
 
     security
 
