@@ -1,40 +1,35 @@
+```json
 {
   "name": "enterprise-qa-runner",
   "version": "1.0.0",
   "private": true,
 
   "scripts": {
-
     "test": "playwright test",
 
     "test:ci": "playwright test --reporter=html,json,junit",
 
-    "discovery": "ts-node scripts/discovery.ts",
+    "discovery": "ts-node scripts/discovery-runner.ts",
 
     "generate": "ts-node scripts/test-generator.ts",
 
     "build-specs": "ts-node scripts/spec-builder.ts",
 
-    "analyze": "ts-node scripts/defect-analyzer.ts",
+    "test:generated": "playwright test",
 
-    "test:generated": "playwright test generated-tests",
+    "analyze": "ts-node scripts/defect-analyzer.ts",
 
     "qa": "npm run discovery && npm run generate && npm run build-specs && npm run test:generated && npm run analyze",
 
-    "clean": "rm -rf playwright-report test-results generated-tests qa-artifacts"
+    "clean": "rm -rf generated-tests playwright-report test-results qa-artifacts"
   },
 
   "devDependencies": {
-
     "@playwright/test": "^1.56.0",
-
     "playwright": "^1.56.0",
-
     "typescript": "^5.8.2",
-
     "ts-node": "^10.9.2",
-
     "@types/node": "^24.0.0"
-
   }
 }
+```
