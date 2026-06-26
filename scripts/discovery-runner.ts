@@ -1,5 +1,5 @@
 import fs from "fs";
-import { discoverWebsite } from "./discovery";
+
 
 async function run() {
 
