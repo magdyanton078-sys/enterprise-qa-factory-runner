@@ -405,19 +405,18 @@ const sessionStorageData = await page.evaluate(() => {
 // PERFORMANCE
 // ======================================================
 
-const performance = await page.evaluate(() => {
+const performanceData = await page.evaluate(() => {
 
-    const timing = window.performance.timing;
+    const perf: any = globalThis.performance;
+    const timing: any = perf.timing;
 
     return {
 
         domContentLoaded:
-
             timing.domContentLoadedEventEnd -
             timing.navigationStart,
 
         loadEvent:
-
             timing.loadEventEnd -
             timing.navigationStart,
 
