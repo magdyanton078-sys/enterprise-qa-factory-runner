@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
 
     await page.goto(TARGET_URL, {
 
-        waitUntil: "networkidle",
+        waitUntil: "domcontentloaded",
 
         timeout: 60000
 
@@ -61,7 +61,7 @@ for (const tc of testCases) {
 
 test("${id} - ${title}", async ({ page }) => {
 
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("domcontentloaded");
 
 `;
         // =====================================================
@@ -132,7 +132,7 @@ test("${id} - ${title}", async ({ page }) => {
 
     await page.reload({
 
-        waitUntil: "networkidle"
+        waitUntil: "domcontentloaded"
 
     });
 
