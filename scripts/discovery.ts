@@ -125,6 +125,9 @@ export async function discoverWebsite(
     await page.waitForLoadState("networkidle");
 
     await page.waitForTimeout(2000);
+    if (!page.url()) {
+    throw new Error("Navigation failed.");
+}
     // ======================================================
 // DOM STATISTICS
 // ======================================================
@@ -226,7 +229,7 @@ await page.locator("button,[role='button']").evaluateAll(btns =>
 
     btns.map((b:any)=>({
 
-        text: b.innerText,
+        text: b.innerText.trim(),
 
         id: b.id,
 
@@ -280,7 +283,7 @@ await page.locator("a").evaluateAll(links =>
 
     links.map((l:any)=>({
 
-        text: l.innerText,
+        text: l.innerText.trim(),
 
         href: l.href,
 
@@ -302,7 +305,7 @@ await page.locator("img").evaluateAll(images =>
 
         src: img.src,
 
-        alt: img.alt,
+        alt: img.alt || "",
 
         width: img.width,
 
@@ -320,7 +323,7 @@ await page.locator("nav a").evaluateAll(items =>
 
     items.map((n:any)=>({
 
-        text: n.innerText,
+      text: n.innerText.trim(),
 
         href: n.href
 
@@ -406,20 +409,15 @@ const sessionStorageData = await page.evaluate(() => {
 
 const performanceData = await page.evaluate(() => {
 
-    const perf: any = globalThis.performance;
-    const timing: any = perf.timing;
+    const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
 
     return {
 
-        domContentLoaded:
-            timing.domContentLoadedEventEnd -
-            timing.navigationStart,
+        domContentLoaded: Math.round(nav.domContentLoadedEventEnd),
 
-        loadEvent:
-            timing.loadEventEnd -
-            timing.navigationStart,
+        loadEvent: Math.round(nav.loadEventEnd),
 
-        transferSize: 0
+        transferSize: nav.transferSize
 
     };
 
@@ -439,8 +437,9 @@ const accessibility = {
         await page.locator("button:empty").count(),
 
     inputsWithoutLabel:
-
-        await page.locator("input:not([aria-label])").count()
+await page.locator(
+"input:not([aria-label]):not([type='hidden'])"
+).count()
 
 };
     // ======================================================
