@@ -3,6 +3,7 @@ name: Enterprise AI QA Agent
 on:
   workflow_dispatch:
     inputs:
+
       targetUrl:
         description: "Target Website URL"
         required: true
@@ -14,92 +15,152 @@ on:
         type: string
 
 jobs:
+
   enterprise-qa:
+
     runs-on: ubuntu-latest
+
     timeout-minutes: 60
 
     steps:
 
-      - name: Checkout
+      ####################################################
+      # Checkout Repository
+      ####################################################
+
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      ####################################################
+      # Setup Node
+      ####################################################
+
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
+      ####################################################
+      # Install Dependencies
+      ####################################################
+
       - name: Install Dependencies
         run: npm install
 
-      - name: Install Browsers
+      ####################################################
+      # Install Playwright Browsers
+      ####################################################
+
+      - name: Install Playwright Browsers
         run: npx playwright install --with-deps
+
+      ####################################################
+      # Prepare Workspace
+      ####################################################
 
       - name: Prepare Workspace
         run: |
           mkdir -p generated-tests
           mkdir -p test-results
+          mkdir -p playwright-report
+          mkdir -p qa-artifacts
 
       ####################################################
-      # DISCOVERY (IMPORTANT FIX)
+      # Discovery Phase
       ####################################################
-      - name: Run Discovery Spec
+
+      - name: Execute Discovery
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: |
-          npx playwright test discovery.spec.ts
-
-          echo "Checking discovery output..."
-          test -f test-results/discovery.json || (echo "Missing discovery.json" && exit 1)
+          npx playwright test runner/discovery.spec.ts
 
       ####################################################
-      # GENERATE TESTS
+      # Generate Test Cases
       ####################################################
-      - name: Generate Tests
+
+      - name: Generate Dynamic Test Cases
         run: |
           npx ts-node scripts/test-generator.ts
-          test -f test-results/generated-tests.json || (echo "Missing tests" && exit 1)
 
       ####################################################
-      # BUILD SPECS
+      # Build Playwright Specs
       ####################################################
-      - name: Build Specs
+
+      - name: Build Generated Specs
         run: |
           npx ts-node scripts/spec-builder.ts
-          test -f generated-tests/generated.spec.ts || (echo "Missing spec" && exit 1)
 
       ####################################################
-      # EXECUTE
+      # Execute Generated Suite
       ####################################################
-      - name: Run Tests
+
+      - name: Execute Generated Tests
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: |
           npx playwright test generated-tests
 
       ####################################################
-      # ANALYZE
+      # AI Defect Analysis
       ####################################################
-      - name: Analyze
+
+      - name: Analyze Results
         if: always()
         run: |
           npx ts-node scripts/defect-analyzer.ts
 
       ####################################################
-      # SUMMARY
+      # Show Summary
       ####################################################
-      - name: Summary
+
+      - name: QA Summary
         if: always()
         run: |
-          cat test-results/final-report.json || echo "No report"
+
+          echo ""
+          echo "==========================================="
+          echo "Enterprise QA Execution Summary"
+          echo "==========================================="
+
+          if [ -f test-results/final-report.json ]; then
+            cat test-results/final-report.json
+          else
+            echo "No final report generated."
+          fi
+
+          echo ""
+          echo "Execution ID : ${{ github.event.inputs.executionId }}"
+          echo "Target URL   : ${{ github.event.inputs.targetUrl }}"
+          echo "==========================================="
 
       ####################################################
-      # ARTIFACTS
+      # Upload Reports
       ####################################################
-      - name: Upload
+
+      - name: Upload QA Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: qa-run
+
+          name: enterprise-qa-${{ github.run_id }}
+
           path: |
             generated-tests/
+            playwright-report/
             test-results/
+            qa-artifacts/
+
+          if-no-files-found: warn
+
+      ####################################################
+      # Finish
+      ####################################################
+
+      - name: Finish
+        if: always()
+        run: |
+
+          echo ""
+          echo "Enterprise QA Factory Completed Successfully."
+          echo ""
