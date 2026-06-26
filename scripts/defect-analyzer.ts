@@ -1,4 +1,4 @@
-```ts
+
 import fs from "fs";
 
 const PLAYWRIGHT_RESULTS = "test-results/playwright-results.json";
@@ -201,4 +201,4 @@ console.log("Pass Rate   :", passRate + "%");
 console.log("Defects     :", defects.length);
 console.log("Output      :", OUTPUT_FILE);
 console.log("================================");
-```
+
