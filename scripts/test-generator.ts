@@ -21,26 +21,27 @@ export interface DiscoveryResult {
 }
 
 /**
- * Load discovery result from file (IMPORTANT FIX)
+ * Load discovery safely
  */
 function loadDiscovery(): DiscoveryResult {
-    return JSON.parse(
-        fs.readFileSync("test-results/discovery.json", "utf8")
-    );
+    const path = "test-results/discovery.json";
+
+    if (!fs.existsSync(path)) {
+        throw new Error("Missing discovery.json - run discovery step first");
+    }
+
+    return JSON.parse(fs.readFileSync(path, "utf8"));
 }
 
 /**
- * Generate tests based on discovery
+ * Generate tests
  */
 export function generateTests(discovery: DiscoveryResult): GeneratedTest[] {
 
     const tests: GeneratedTest[] = [];
 
-    // ---------------------------
-    // FORMS
-    // ---------------------------
-    if (discovery.forms?.length > 0) {
-
+    // ---------------- FORMS ----------------
+    if (discovery.forms?.length) {
         tests.push(
             {
                 id: "FORM-001",
@@ -59,91 +60,59 @@ export function generateTests(discovery: DiscoveryResult): GeneratedTest[] {
                 priority: "Critical",
                 description: "Leave required fields empty",
                 expected: "Validation appears"
-            },
-            {
-                id: "FORM-003",
-                feature: "Forms",
-                title: "Boundary Input",
-                type: "Boundary",
-                priority: "High",
-                description: "Maximum length validation",
-                expected: "Handled correctly"
             }
         );
     }
 
-    // ---------------------------
-    // INPUTS
-    // ---------------------------
-    if (discovery.inputs?.length > 0) {
-
-        tests.push(
-            {
-                id: "INPUT-001",
-                feature: "Input",
-                title: "Accept Valid Input",
-                type: "Positive",
-                priority: "High",
-                description: "Type valid value",
-                expected: "Accepted"
-            },
-            {
-                id: "INPUT-002",
-                feature: "Input",
-                title: "Reject Invalid Characters",
-                type: "Negative",
-                priority: "High",
-                description: "Enter special characters",
-                expected: "Validation triggered"
-            }
-        );
+    // ---------------- INPUTS ----------------
+    if (discovery.inputs?.length) {
+        tests.push({
+            id: "INPUT-001",
+            feature: "Input",
+            title: "Accept Valid Input",
+            type: "Positive",
+            priority: "High",
+            description: "Type valid input",
+            expected: "Accepted"
+        });
     }
 
-    // ---------------------------
-    // BUTTONS
-    // ---------------------------
-    if (discovery.buttons?.length > 0) {
-
+    // ---------------- BUTTONS ----------------
+    if (discovery.buttons?.length) {
         tests.push({
             id: "BTN-001",
             feature: "Buttons",
-            title: "Clickable Buttons",
+            title: "Buttons Clickable",
             type: "Functional",
             priority: "Critical",
-            description: "Verify buttons are clickable",
+            description: "Verify button interaction",
             expected: "Action executed"
         });
     }
 
-    // ---------------------------
-    // NAVIGATION
-    // ---------------------------
-    if (discovery.navigation?.length > 0) {
-
+    // ---------------- NAVIGATION ----------------
+    if (discovery.navigation?.length) {
         tests.push({
             id: "NAV-001",
             feature: "Navigation",
-            title: "Navigation Links",
+            title: "Navigation Works",
             type: "Functional",
             priority: "Critical",
-            description: "Verify navigation works",
-            expected: "Page loads correctly"
+            description: "Verify navigation links",
+            expected: "Page loads"
         });
     }
 
-    // ---------------------------
-    // LINKS
-    // ---------------------------
-    if (discovery.links?.length > 0) {
-
+    // ---------------- LINKS ----------------
+    if (discovery.links?.length) {
         tests.push({
             id: "LINK-001",
             feature: "Links",
-            title: "Check Links",
+            title: "Links Valid",
             type: "Functional",
             priority: "Medium",
-            description: "Validate link responses",
-            expected: "HTTP 200 OK"
+            description: "Check link responses",
+            expected: "HTTP 200"
         });
     }
 
@@ -151,13 +120,15 @@ export function generateTests(discovery: DiscoveryResult): GeneratedTest[] {
 }
 
 /**
- * MAIN EXECUTION (IMPORTANT FIX)
+ * MAIN
  */
 function main() {
 
     const discovery = loadDiscovery();
 
     const tests = generateTests(discovery);
+
+    fs.mkdirSync("test-results", { recursive: true });
 
     fs.writeFileSync(
         "test-results/generated-tests.json",
@@ -167,5 +138,4 @@ function main() {
     console.log(`Generated ${tests.length} test cases`);
 }
 
-// Run script
 main();
