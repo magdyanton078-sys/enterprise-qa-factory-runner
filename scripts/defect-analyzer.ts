@@ -1,27 +1,26 @@
-
+```ts
 import fs from "fs";
 
-const RESULTS_FILE = "test-results/playwright-results.json";
+const PLAYWRIGHT_RESULTS = "test-results/playwright-results.json";
+const DISCOVERY_RESULTS = "test-results/discovery.json";
 const OUTPUT_FILE = "test-results/final-report.json";
 
 console.log("========================================");
 console.log("Enterprise QA Agent - Defect Analyzer");
 console.log("========================================");
 
-if (!fs.existsSync(RESULTS_FILE)) {
-
+if (!fs.existsSync(PLAYWRIGHT_RESULTS)) {
     console.log("Playwright results not found.");
-    console.log("Skipping defect analysis.");
-
     process.exit(0);
 }
 
 const results = JSON.parse(
-    fs.readFileSync(
-        RESULTS_FILE,
-        "utf8"
-    )
+    fs.readFileSync(PLAYWRIGHT_RESULTS, "utf8")
 );
+
+const discovery = fs.existsSync(DISCOVERY_RESULTS)
+    ? JSON.parse(fs.readFileSync(DISCOVERY_RESULTS, "utf8"))
+    : null;
 
 let total = 0;
 let passed = 0;
@@ -40,7 +39,6 @@ function detectSeverity(message: string) {
         text.includes("503") ||
         text.includes("network")
     ) {
-
         return "Critical";
     }
 
@@ -48,7 +46,6 @@ function detectSeverity(message: string) {
         text.includes("locator") ||
         text.includes("selector")
     ) {
-
         return "High";
     }
 
@@ -56,7 +53,6 @@ function detectSeverity(message: string) {
         text.includes("expect") ||
         text.includes("assert")
     ) {
-
         return "Medium";
     }
 
@@ -71,7 +67,7 @@ function estimateRootCause(message: string) {
         return "Application performance issue";
 
     if (text.includes("locator"))
-        return "UI element changed";
+        return "UI locator changed";
 
     if (text.includes("selector"))
         return "DOM structure changed";
@@ -98,9 +94,8 @@ for (const suite of results.suites || []) {
             if (status === "passed") {
 
                 passed++;
-            }
 
-            else if (status === "failed") {
+            } else if (status === "failed") {
 
                 failed++;
 
@@ -112,19 +107,21 @@ for (const suite of results.suites || []) {
 
                     test: spec.title,
 
-                    severity:
-                        detectSeverity(error),
+                    severity: detectSeverity(error),
 
-                    rootCause:
-                        estimateRootCause(error),
+                    rootCause: estimateRootCause(error),
 
-                    message: error
+                    message: error,
+
+                    consoleErrors:
+                        discovery?.consoleErrors ?? [],
+
+                    networkFailures:
+                        discovery?.networkFailures ?? []
 
                 });
 
-            }
-
-            else {
+            } else {
 
                 skipped++;
 
@@ -140,54 +137,68 @@ const passRate =
     total === 0
         ? 0
         : Number(
-              ((passed / total) * 100).toFixed(2)
-          );
+            ((passed / total) * 100).toFixed(2)
+        );
 
-const summary = {
+const finalReport = {
 
-    executionTime:
-        new Date().toISOString(),
+    executionTime: new Date().toISOString(),
 
-    totalTests: total,
+    target: discovery?.url ?? "",
 
-    passed,
+    title: discovery?.title ?? "",
 
-    failed,
+    summary: {
 
-    skipped,
+        total,
 
-    passRate,
+        passed,
 
-    releaseDecision:
-        passRate >= 95
-            ? "READY"
-            : "NOT_READY",
+        failed,
+
+        skipped,
+
+        passRate,
+
+        releaseDecision:
+            passRate >= 95
+                ? "READY"
+                : "NOT_READY"
+
+    },
+
+    discovery: {
+
+        statistics:
+            discovery?.statistics ?? {},
+
+        consoleErrors:
+            discovery?.consoleErrors ?? [],
+
+        networkFailures:
+            discovery?.networkFailures ?? []
+
+    },
 
     defects
 
 };
 
 fs.writeFileSync(
-
     OUTPUT_FILE,
-
-    JSON.stringify(
-        summary,
-        null,
-        2
-    )
-
+    JSON.stringify(finalReport, null, 2)
 );
 
 console.log("");
-console.log("========== QA SUMMARY ==========");
+console.log("================================");
+console.log("QA Analysis Completed");
+console.log("================================");
 console.log("Total Tests :", total);
 console.log("Passed      :", passed);
 console.log("Failed      :", failed);
 console.log("Skipped     :", skipped);
 console.log("Pass Rate   :", passRate + "%");
 console.log("Defects     :", defects.length);
+console.log("Output      :", OUTPUT_FILE);
 console.log("================================");
-console.log("");
-console.log("QA Analysis generated:");
-console.log(OUTPUT_FILE);
+```
