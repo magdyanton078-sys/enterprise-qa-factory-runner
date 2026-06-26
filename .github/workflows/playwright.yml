@@ -5,12 +5,12 @@ on:
     inputs:
 
       targetUrl:
-        description: "Target Website URL"
+        description: Target Website URL
         required: true
         type: string
 
       executionId:
-        description: "Execution ID"
+        description: Execution ID
         required: false
         type: string
 
@@ -25,37 +25,37 @@ jobs:
     steps:
 
       ####################################################
-      # Checkout Repository
+      # Checkout
       ####################################################
 
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       ####################################################
-      # Setup Node
+      # Node
       ####################################################
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
       ####################################################
-      # Install Dependencies
+      # Install
       ####################################################
 
       - name: Install Dependencies
         run: npm install
 
       ####################################################
-      # Install Playwright Browsers
+      # Playwright
       ####################################################
 
-      - name: Install Playwright Browsers
+      - name: Install Browsers
         run: npx playwright install --with-deps
 
       ####################################################
-      # Prepare Workspace
+      # Workspace
       ####################################################
 
       - name: Prepare Workspace
@@ -66,52 +66,68 @@ jobs:
           mkdir -p qa-artifacts
 
       ####################################################
-      # Discovery Phase
+      # Discovery
       ####################################################
 
       - name: Execute Discovery
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: |
-          npx playwright test runner/discovery.spec.ts
+          npm run discovery
 
       ####################################################
-      # Generate Test Cases
+      # Verify discovery
       ####################################################
 
-      - name: Generate Dynamic Test Cases
+      - name: Verify Discovery
         run: |
-          npx ts-node scripts/test-generator.ts
+          test -f test-results/discovery.json
 
       ####################################################
-      # Build Playwright Specs
+      # Generate Tests
       ####################################################
 
-      - name: Build Generated Specs
+      - name: Generate Tests
         run: |
-          npx ts-node scripts/spec-builder.ts
+          npm run generate
 
       ####################################################
-      # Execute Generated Suite
+      # Build Specs
+      ####################################################
+
+      - name: Build Specs
+        run: |
+          npm run build-specs
+
+      ####################################################
+      # Verify Specs
+      ####################################################
+
+      - name: Verify Generated Specs
+        run: |
+          ls -la generated-tests
+
+      ####################################################
+      # Execute Tests
       ####################################################
 
       - name: Execute Generated Tests
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: |
-          npx playwright test generated-tests
+          npm run test:generated
 
       ####################################################
-      # AI Defect Analysis
+      # Analyze
       ####################################################
 
       - name: Analyze Results
         if: always()
         run: |
-          npx ts-node scripts/defect-analyzer.ts
+          npm run analyze
 
       ####################################################
-      # Show Summary
+      # Summary
       ####################################################
 
       - name: QA Summary
@@ -119,23 +135,23 @@ jobs:
         run: |
 
           echo ""
-          echo "==========================================="
+          echo "========================================"
           echo "Enterprise QA Execution Summary"
-          echo "==========================================="
+          echo "========================================"
 
-          if [ -f test-results/final-report.json ]; then
-            cat test-results/final-report.json
+          if [ -f test-results/qa-analysis.json ]; then
+            cat test-results/qa-analysis.json
           else
-            echo "No final report generated."
+            echo "No QA Analysis Generated"
           fi
 
           echo ""
           echo "Execution ID : ${{ github.event.inputs.executionId }}"
           echo "Target URL   : ${{ github.event.inputs.targetUrl }}"
-          echo "==========================================="
+          echo "========================================"
 
       ####################################################
-      # Upload Reports
+      # Upload
       ####################################################
 
       - name: Upload QA Artifacts
@@ -160,7 +176,6 @@ jobs:
       - name: Finish
         if: always()
         run: |
-
           echo ""
           echo "Enterprise QA Factory Completed Successfully."
           echo ""
