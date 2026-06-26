@@ -1,19 +1,32 @@
+import { chromium } from "@playwright/test";
 import fs from "fs";
-
+import { discoverWebsite } from "./discovery";
 
 async function run() {
 
-    const path = "test-results/discovery.json";
+    const browser = await chromium.launch();
 
-    if (!fs.existsSync(path)) {
-        throw new Error("Missing discovery.json - run discovery.spec.ts first");
-    }
+    const page = await browser.newPage();
 
-    const data = JSON.parse(fs.readFileSync(path, "utf8"));
+    const url = process.env.TARGET_URL!;
 
-    console.log("Discovery loaded successfully");
-    console.log("Title:", data.title);
-    console.log("URL:", data.url);
+    await page.goto(url,{
+        waitUntil:"networkidle"
+    });
+
+    const result = await discoverWebsite(page);
+
+    fs.mkdirSync("test-results",{recursive:true});
+
+    fs.writeFileSync(
+        "test-results/discovery.json",
+        JSON.stringify(result,null,2)
+    );
+
+    console.log("Discovery completed");
+
+    await browser.close();
+
 }
 
 run();
