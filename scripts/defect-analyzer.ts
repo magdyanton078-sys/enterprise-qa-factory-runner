@@ -2,7 +2,7 @@
 import fs from "fs";
 
 const RESULTS_FILE = "test-results/playwright-results.json";
-const OUTPUT_FILE = "test-results/qa-analysis.json";
+const OUTPUT_FILE = "test-results/final-report.json";
 
 console.log("========================================");
 console.log("Enterprise QA Agent - Defect Analyzer");
