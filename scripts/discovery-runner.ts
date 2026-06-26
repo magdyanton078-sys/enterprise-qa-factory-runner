@@ -1,5 +1,5 @@
 import fs from "fs";
-import { discoverWebsite } from "./discovery";
+import { discoverWebsite } from "./discovery.js";
 import type { Page } from "@playwright/test";
 
 async function run() {
