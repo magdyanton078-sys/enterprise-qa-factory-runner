@@ -182,7 +182,7 @@ function main() {
 
     fs.writeFileSync(
 
-        "test-results/test-cases.json",
+        "test-results/generated-tests.json",
 
         JSON.stringify(tests, null, 2)
 
@@ -192,7 +192,7 @@ function main() {
 
     console.log("Generated", tests.length, "test cases.");
 
-    console.log("Output : test-results/test-cases.json");
+    console.log("Output : test-results/generated-tests.json");
 
 }
 
