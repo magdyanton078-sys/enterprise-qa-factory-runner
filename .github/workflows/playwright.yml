@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v4
 
       ####################################################
-      # Node Setup
+      # Setup Node
       ####################################################
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -35,7 +35,7 @@ jobs:
           node-version: 22
 
       ####################################################
-      # Install
+      # Install Dependencies
       ####################################################
       - name: Install Dependencies
         run: npm install
@@ -43,11 +43,11 @@ jobs:
       ####################################################
       # Install Playwright
       ####################################################
-      - name: Install Browsers
+      - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
       ####################################################
-      # Workspace
+      # Prepare Workspace
       ####################################################
       - name: Prepare Workspace
         run: |
@@ -57,36 +57,44 @@ jobs:
           mkdir -p qa-artifacts
 
       ####################################################
-      # Discovery (SOURCE OF TRUTH FIXED)
+      # DISCOVERY (CRITICAL FIX)
       ####################################################
       - name: Execute Discovery Engine
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: |
+          set -e
           npx ts-node scripts/discovery.ts
 
+          echo "Validating discovery output..."
+          if [ ! -f test-results/discovery.json ]; then
+            echo "ERROR: discovery.json was not created"
+            exit 1
+          fi
+
       ####################################################
-      # Generate Tests
+      # GENERATE TESTS (depends on discovery.json)
       ####################################################
       - name: Generate Dynamic Test Cases
         run: |
+          set -e
           npx ts-node scripts/test-generator.ts
 
+          echo "Validating generated test cases..."
+          if [ ! -f test-results/generated-tests.json ]; then
+            echo "ERROR: generated-tests.json missing"
+            exit 1
+          fi
+
       ####################################################
-      # Build Specs
+      # BUILD SPECS
       ####################################################
       - name: Build Generated Specs
         run: |
+          set -e
           npx ts-node scripts/spec-builder.ts
 
-      ####################################################
-      # VALIDATION (CRITICAL SAFETY GATE)
-      ####################################################
-      - name: Validate Generated Tests
-        run: |
-          echo "Checking generated specs..."
-          ls -la generated-tests || true
-
+          echo "Validating Playwright spec..."
           if [ ! -f generated-tests/generated.spec.ts ]; then
             echo "ERROR: generated.spec.ts not found"
             exit 1
