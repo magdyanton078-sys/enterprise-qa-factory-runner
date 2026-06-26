@@ -1,8 +1,8 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
 
-    testDir: './generated-tests',
+    testDir: "./generated-tests",
 
     timeout: 60 * 1000,
 
@@ -15,20 +15,18 @@ export default defineConfig({
     workers: process.env.CI ? 2 : undefined,
 
     expect: {
-
         timeout: 10000
-
     },
 
     use: {
 
         headless: true,
 
-        trace: 'retain-on-failure',
+        trace: "retain-on-failure",
 
-        screenshot: 'only-on-failure',
+        screenshot: "only-on-failure",
 
-        video: 'retain-on-failure',
+        video: "retain-on-failure",
 
         actionTimeout: 15000,
 
@@ -41,24 +39,24 @@ export default defineConfig({
     reporter: [
 
         [
-            'html',
+            "html",
             {
-                outputFolder: 'playwright-report',
-                open: 'never'
+                outputFolder: "playwright-report",
+                open: "never"
             }
         ],
 
         [
-            'json',
+            "json",
             {
-                outputFile: 'test-results/playwright-results.json'
+                outputFile: "test-results/playwright-results.json"
             }
         ],
 
         [
-            'junit',
+            "junit",
             {
-                outputFile: 'test-results/junit.xml'
+                outputFile: "test-results/junit.xml"
             }
         ]
 
