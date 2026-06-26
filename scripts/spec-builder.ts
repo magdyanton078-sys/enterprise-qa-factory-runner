@@ -1,7 +1,7 @@
 import fs from "fs";
 
 const generatedDir = "generated-tests";
-const inputFile = "test-results/test-cases.json";
+const inputFile = "test-results/generated-tests.json";
 
 if (!fs.existsSync(generatedDir)) {
     fs.mkdirSync(generatedDir, { recursive: true });
