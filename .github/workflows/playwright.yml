@@ -20,139 +20,96 @@ jobs:
 
     steps:
 
-      ####################################################
-      # Checkout
-      ####################################################
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      ####################################################
-      # Setup Node
-      ####################################################
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      ####################################################
-      # Install Dependencies
-      ####################################################
       - name: Install Dependencies
         run: npm install
 
-      ####################################################
-      # Install Playwright
-      ####################################################
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
-      ####################################################
-      # Prepare Workspace
-      ####################################################
       - name: Prepare Workspace
         run: |
-          mkdir -p generated-tests
           mkdir -p test-results
+          mkdir -p generated-tests
           mkdir -p playwright-report
           mkdir -p qa-artifacts
 
       ####################################################
-      # DISCOVERY (CRITICAL FIX)
+      # 1. DISCOVERY (ONLY SOURCE OF TRUTH)
       ####################################################
-      - name: Execute Discovery Engine
+      - name: Run Discovery
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: |
           set -e
           npx ts-node scripts/discovery-runner.ts
-          echo "Validating discovery output..."
-          if [ ! -f test-results/discovery.json ]; then
-            echo "ERROR: discovery.json was not created"
-            exit 1
-          fi
+
+          echo "Checking discovery output..."
+          test -f test-results/discovery.json || (echo "Missing discovery.json" && exit 1)
 
       ####################################################
-      # GENERATE TESTS (depends on discovery.json)
+      # 2. TEST GENERATION
       ####################################################
-      - name: Generate Dynamic Test Cases
+      - name: Generate Tests
         run: |
           set -e
           npx ts-node scripts/test-generator.ts
 
-          echo "Validating generated test cases..."
-          if [ ! -f test-results/generated-tests.json ]; then
-            echo "ERROR: generated-tests.json missing"
-            exit 1
-          fi
+          test -f test-results/generated-tests.json || (echo "Missing generated tests" && exit 1)
 
       ####################################################
-      # BUILD SPECS
+      # 3. SPEC BUILD
       ####################################################
-      - name: Build Generated Specs
+      - name: Build Specs
         run: |
           set -e
           npx ts-node scripts/spec-builder.ts
 
-          echo "Validating Playwright spec..."
-          if [ ! -f generated-tests/generated.spec.ts ]; then
-            echo "ERROR: generated.spec.ts not found"
-            exit 1
-          fi
+          test -f generated-tests/generated.spec.ts || (echo "Missing spec file" && exit 1)
 
       ####################################################
-      # EXECUTION
+      # 4. EXECUTION
       ####################################################
-      - name: Execute Generated Tests
+      - name: Run Tests
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
-        run: |
-          npx playwright test generated-tests
+        run: npx playwright test generated-tests
 
       ####################################################
-      # ANALYSIS
+      # 5. ANALYSIS
       ####################################################
-      - name: Analyze Results
+      - name: Analyze
+        if: always()
+        run: npx ts-node scripts/defect-analyzer.ts
+
+      ####################################################
+      # 6. SUMMARY
+      ####################################################
+      - name: Summary
         if: always()
         run: |
-          npx ts-node scripts/defect-analyzer.ts
+          echo "================================"
+          echo "Execution Summary"
+          echo "================================"
+          cat test-results/final-report.json || echo "No report"
 
       ####################################################
-      # SUMMARY
-      ####################################################
-      - name: QA Summary
-        if: always()
-        run: |
-          echo ""
-          echo "==========================================="
-          echo "Enterprise QA Execution Summary"
-          echo "==========================================="
-
-          cat test-results/final-report.json || echo "No report found"
-
-          echo ""
-          echo "Execution ID : ${{ github.event.inputs.executionId }}"
-          echo "Target URL   : ${{ github.event.inputs.targetUrl }}"
-          echo "==========================================="
-
-      ####################################################
-      # ARTIFACTS
+      # 7. ARTIFACTS
       ####################################################
       - name: Upload Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: enterprise-qa-${{ github.run_id }}
+          name: qa-${{ github.run_id }}
           path: |
             generated-tests/
-            playwright-report/
             test-results/
+            playwright-report/
             qa-artifacts/
-
-      ####################################################
-      # FINISH
-      ####################################################
-      - name: Finish
-        if: always()
-        run: |
-          echo ""
-          echo "Enterprise QA Factory Completed Successfully."
