@@ -8,7 +8,7 @@ if (!fs.existsSync(generatedDir)) {
 }
 
 if (!fs.existsSync(inputFile)) {
-    throw new Error("test-cases.json not found");
+    throw new Error("generated-tests.json not found");
 }
 
 const testCases = JSON.parse(
