@@ -64,7 +64,7 @@ jobs:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: |
           set -e
-          node --loader ts-node/esm scripts/discovery-runner.ts
+          npx ts-node scripts/discovery-runner.ts
           echo "Validating discovery output..."
           if [ ! -f test-results/discovery.json ]; then
             echo "ERROR: discovery.json was not created"
