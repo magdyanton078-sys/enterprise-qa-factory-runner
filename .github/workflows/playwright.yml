@@ -16,7 +16,7 @@ on:
 
 jobs:
 
-  qa-agent:
+  enterprise-qa:
 
     runs-on: ubuntu-latest
 
@@ -24,132 +24,143 @@ jobs:
 
     steps:
 
-      ########################################################
-      # Checkout
-      ########################################################
+      ####################################################
+      # Checkout Repository
+      ####################################################
 
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      ########################################################
-      # Node
-      ########################################################
+      ####################################################
+      # Setup Node
+      ####################################################
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      ########################################################
-      # Install
-      ########################################################
+      ####################################################
+      # Install Dependencies
+      ####################################################
 
-      - name: Install Packages
+      - name: Install Dependencies
         run: npm install
 
-      ########################################################
-      # Install Playwright
-      ########################################################
+      ####################################################
+      # Install Playwright Browsers
+      ####################################################
 
-      - name: Install Browsers
+      - name: Install Playwright Browsers
         run: npx playwright install --with-deps
 
-      ########################################################
-      # Create folders
-      ########################################################
+      ####################################################
+      # Prepare Workspace
+      ####################################################
 
       - name: Prepare Workspace
         run: |
           mkdir -p generated-tests
           mkdir -p test-results
           mkdir -p playwright-report
+          mkdir -p qa-artifacts
 
-      ########################################################
-      # Discovery
-      ########################################################
+      ####################################################
+      # Discovery Phase
+      ####################################################
 
-      - name: Discovery Phase
+      - name: Execute Discovery
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: |
-          npx ts-node scripts/discovery.ts
+          npx playwright test runner/discovery.spec.ts
 
-      ########################################################
-      # AI Test Generation
-      ########################################################
+      ####################################################
+      # Generate Test Cases
+      ####################################################
 
-      - name: Generate Test Cases
+      - name: Generate Dynamic Test Cases
         run: |
           npx ts-node scripts/test-generator.ts
 
-      ########################################################
+      ####################################################
       # Build Playwright Specs
-      ########################################################
+      ####################################################
 
-      - name: Build Playwright Specs
+      - name: Build Generated Specs
         run: |
           npx ts-node scripts/spec-builder.ts
 
-      ########################################################
-      # Execute Generated Specs
-      ########################################################
+      ####################################################
+      # Execute Generated Suite
+      ####################################################
 
-      - name: Execute Automation Suite
+      - name: Execute Generated Tests
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: |
           npx playwright test generated-tests
 
-      ########################################################
-      # Analyze Results
-      ########################################################
+      ####################################################
+      # AI Defect Analysis
+      ####################################################
 
-      - name: Analyze Defects
+      - name: Analyze Results
         if: always()
         run: |
           npx ts-node scripts/defect-analyzer.ts
 
-      ########################################################
-      # Print Summary
-      ########################################################
+      ####################################################
+      # Show Summary
+      ####################################################
 
-      - name: Print Summary
+      - name: QA Summary
         if: always()
         run: |
 
           echo ""
-          echo "======================================"
-          echo " ENTERPRISE QA EXECUTION SUMMARY"
-          echo "======================================"
+          echo "==========================================="
+          echo "Enterprise QA Execution Summary"
+          echo "==========================================="
 
-          cat test-results/final-report.json || true
+          if [ -f test-results/final-report.json ]; then
+            cat test-results/final-report.json
+          else
+            echo "No final report generated."
+          fi
 
           echo ""
-          echo "======================================"
+          echo "Execution ID : ${{ github.event.inputs.executionId }}"
+          echo "Target URL   : ${{ github.event.inputs.targetUrl }}"
+          echo "==========================================="
 
-      ########################################################
-      # Upload
-      ########################################################
+      ####################################################
+      # Upload Reports
+      ####################################################
 
-      - name: Upload Artifacts
+      - name: Upload QA Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
 
-          name: enterprise-qa-results-${{ github.run_id }}
+          name: enterprise-qa-${{ github.run_id }}
 
           path: |
             generated-tests/
             playwright-report/
             test-results/
+            qa-artifacts/
 
-      ########################################################
+          if-no-files-found: warn
+
+      ####################################################
       # Finish
-      ########################################################
+      ####################################################
 
       - name: Finish
         if: always()
         run: |
 
           echo ""
-          echo "Execution Finished"
-          echo "Execution ID : ${{ github.event.inputs.executionId }}"
-          echo "Target URL   : ${{ github.event.inputs.targetUrl }}"
+          echo "Enterprise QA Factory Completed Successfully."
+          echo ""
