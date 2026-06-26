@@ -1,4 +1,3 @@
-
 import { Page } from "@playwright/test";
 
 export interface DiscoveryResult {
@@ -37,6 +36,16 @@ export interface DiscoveryResult {
         tables: number;
 
         headings: number;
+
+        iframes: number;
+
+        videos: number;
+
+        audios: number;
+
+        scripts: number;
+
+        stylesheets: number;
     };
 
     forms: any[];
@@ -51,15 +60,47 @@ export interface DiscoveryResult {
 
     navigation: any[];
 
+    metaTags: any[];
+
+    cookies: any[];
+
+    localStorage: any[];
+
+    sessionStorage: any[];
+
+    technologies: string[];
+
     consoleErrors: string[];
 
     networkFailures: any[];
 
-    technologies: string[];
+    accessibility: {
 
-    accessibility: any;
+        imagesWithoutAlt: number;
 
-    performance: any;
+        buttonsWithoutText: number;
+
+        inputsWithoutLabel: number;
+
+    };
+
+    performance: {
+
+        domContentLoaded: number;
+
+        loadEvent: number;
+
+        transferSize: number;
+
+    };
+
+    security: {
+
+        https: boolean;
+
+        mixedContent: number;
+
+    };
 
 }
 export async function discoverWebsite(page: Page): Promise<DiscoveryResult> {
@@ -95,217 +136,151 @@ export async function discoverWebsite(page: Page): Promise<DiscoveryResult> {
     });
 
     await page.waitForLoadState("networkidle");
-      const buttons =
-        await page.locator("button,[role='button']").count();
 
-    const links =
-        await page.locator("a").count();
+    await page.waitForTimeout(2000);
+    // ======================================================
+// DOM STATISTICS
+// ======================================================
 
-    const inputs =
-        await page.locator("input").count();
+const buttons =
+    await page.locator("button,[role='button']").count();
 
-    const textareas =
-        await page.locator("textarea").count();
+const links =
+    await page.locator("a").count();
 
-    const dropdowns =
-        await page.locator("select").count();
+const inputs =
+    await page.locator("input").count();
 
-    const checkboxes =
-        await page.locator("input[type=checkbox]").count();
+const textareas =
+    await page.locator("textarea").count();
 
-    const radios =
-        await page.locator("input[type=radio]").count();
+const dropdowns =
+    await page.locator("select,[role='combobox']").count();
 
-    const images =
-        await page.locator("img").count();
+const checkboxes =
+    await page.locator("input[type='checkbox']").count();
 
-    const forms =
-        await page.locator("form").count();
+const radios =
+    await page.locator("input[type='radio']").count();
 
-    const tables =
-        await page.locator("table").count();
+const images =
+    await page.locator("img").count();
 
-    const headings =
-        await page.locator("h1,h2,h3,h4,h5,h6").count();
+const forms =
+    await page.locator("form").count();
 
-    const formData = await page.locator("form").evaluateAll(forms =>
+const tables =
+    await page.locator("table").count();
 
-        forms.map((f: any) => ({
+const headings =
+    await page.locator("h1,h2,h3,h4,h5,h6").count();
 
-            id: f.id,
+const iframes =
+    await page.locator("iframe").count();
 
-            name: f.name,
+const videos =
+    await page.locator("video").count();
 
-            action: f.action,
+const audios =
+    await page.locator("audio").count();
 
-            method: f.method,
+const scripts =
+    await page.locator("script").count();
 
-            inputs: f.querySelectorAll("input").length,
+const stylesheets =
+    await page.locator("link[rel='stylesheet']").count();
+    // ======================================================
+// PAGE METADATA
+// ======================================================
 
-            buttons: f.querySelectorAll("button").length
+const pageTitle = await page.title();
 
-        }))
+const currentUrl = page.url();
 
-    );
-    const buttonData =
-        await page.locator("button,[role='button']").evaluateAll(btns =>
+const viewport = page.viewportSize()!;
+    // ======================================================
+// FORMS DISCOVERY
+// ======================================================
 
-            btns.map((b: any) => ({
+const formData = await page.locator("form").evaluateAll(forms =>
 
-                text: b.innerText,
+    forms.map((f: any) => ({
 
-                id: b.id,
+        id: f.id,
 
-                type: b.type,
+        name: f.name,
 
-                disabled: b.disabled
+        action: f.action,
 
-            }))
+        method: f.method,
 
-        );
-      const inputData =
-        await page.locator("input").evaluateAll(inputs =>
+        enctype: f.enctype,
 
-            inputs.map((i: any) => ({
+        autocomplete: f.autocomplete,
 
-                type: i.type,
+        inputs: f.querySelectorAll("input").length,
 
-                id: i.id,
+        buttons: f.querySelectorAll("button").length,
 
-                name: i.name,
+        selects: f.querySelectorAll("select").length,
 
-                placeholder: i.placeholder,
+        textareas: f.querySelectorAll("textarea").length
 
-                required: i.required
+    }))
 
-            }))
+);
+    // ======================================================
+// BUTTON DISCOVERY
+// ======================================================
 
-        );
-      const linkData =
-        await page.locator("a").evaluateAll(links =>
+const buttonData =
+await page.locator("button,[role='button']").evaluateAll(btns =>
 
-            links.map((l: any) => ({
+    btns.map((b:any)=>({
 
-                text: l.innerText,
+        text:b.innerText,
 
-                href: l.href
+        id:b.id,
 
-            }))
+        type:b.type,
 
-        );
-      const imageData =
-        await page.locator("img").evaluateAll(imgs =>
+        disabled:b.disabled,
 
-            imgs.map((img: any) => ({
+        className:b.className,
 
-                src: img.src,
+        ariaLabel:b.getAttribute("aria-label")
 
-                alt: img.alt
+    }))
 
-            }))
+);
+    // ======================================================
+// INPUT DISCOVERY
+// ======================================================
 
-        );
-      const navigation =
-        await page.locator("nav a").evaluateAll(items =>
+const inputData =
+await page.locator("input").evaluateAll(inputs=>
 
-            items.map((n: any) => ({
+    inputs.map((i:any)=>({
 
-                text: n.innerText,
+        id:i.id,
 
-                href: n.href
+        name:i.name,
 
-            }))
+        type:i.type,
 
-        );
-      const performance = await page.evaluate(() => {
+        placeholder:i.placeholder,
 
-        const nav =
-            performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
+        value:i.value,
 
-        return {
+        required:i.required,
 
-            domContentLoaded:
-                nav.domContentLoadedEventEnd,
+        disabled:i.disabled,
 
-            loadEvent:
-                nav.loadEventEnd,
+        readOnly:i.readOnly,
 
-            transferSize:
-                nav.transferSize
+        autocomplete:i.autocomplete
 
-        };
+    }))
 
-    });
-      const accessibility = {
-
-        imagesWithoutAlt:
-            await page.locator("img:not([alt])").count(),
-
-        buttonsWithoutText:
-            await page.locator("button:empty").count(),
-
-        inputsWithoutLabel:
-            await page.locator("input:not([aria-label])").count()
-
-    };
-      return {
-
-        executionTime: new Date().toISOString(),
-
-        url: page.url(),
-
-        title: await page.title(),
-
-        viewport: page.viewportSize()!,
-
-        statistics: {
-
-            buttons,
-
-            links,
-
-            inputs,
-
-            textareas,
-
-            dropdowns,
-
-            checkboxes,
-
-            radios,
-
-            images,
-
-            forms,
-
-            tables,
-
-            headings
-
-        },
-
-        forms: formData,
-
-        buttons: buttonData,
-
-        inputs: inputData,
-
-        links: linkData,
-
-        images: imageData,
-
-        navigation,
-
-        consoleErrors,
-
-        networkFailures,
-
-        technologies: [],
-
-        accessibility,
-
-        performance
-
-    };
-
-}
+);
+    
