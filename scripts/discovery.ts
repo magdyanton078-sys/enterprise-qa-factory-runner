@@ -122,7 +122,7 @@ export async function discoverWebsite(
 
     });
 
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     await page.waitForTimeout(2000);
     if (!page.url()) {
