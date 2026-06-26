@@ -16,36 +16,22 @@ export interface DiscoveryResult {
     statistics: {
 
         buttons: number;
-
         links: number;
-
         inputs: number;
-
         textareas: number;
-
         dropdowns: number;
-
         checkboxes: number;
-
         radios: number;
-
         images: number;
-
         forms: number;
-
         tables: number;
-
         headings: number;
-
         iframes: number;
-
         videos: number;
-
         audios: number;
-
         scripts: number;
-
         stylesheets: number;
+
     };
 
     forms: any[];
@@ -103,7 +89,9 @@ export interface DiscoveryResult {
     };
 
 }
-export async function discoverWebsite(page: Page): Promise<DiscoveryResult> {
+export async function discoverWebsite(
+    page: Page
+): Promise<DiscoveryResult> {
 
     const consoleErrors: string[] = [];
 
@@ -143,52 +131,52 @@ export async function discoverWebsite(page: Page): Promise<DiscoveryResult> {
 // ======================================================
 
 const buttons =
-    await page.locator("button,[role='button']").count();
+await page.locator("button,[role='button']").count();
 
 const links =
-    await page.locator("a").count();
+await page.locator("a").count();
 
 const inputs =
-    await page.locator("input").count();
+await page.locator("input").count();
 
 const textareas =
-    await page.locator("textarea").count();
+await page.locator("textarea").count();
 
 const dropdowns =
-    await page.locator("select,[role='combobox']").count();
+await page.locator("select,[role='combobox']").count();
 
 const checkboxes =
-    await page.locator("input[type='checkbox']").count();
+await page.locator("input[type='checkbox']").count();
 
 const radios =
-    await page.locator("input[type='radio']").count();
+await page.locator("input[type='radio']").count();
 
 const images =
-    await page.locator("img").count();
+await page.locator("img").count();
 
 const forms =
-    await page.locator("form").count();
+await page.locator("form").count();
 
 const tables =
-    await page.locator("table").count();
+await page.locator("table").count();
 
 const headings =
-    await page.locator("h1,h2,h3,h4,h5,h6").count();
+await page.locator("h1,h2,h3,h4,h5,h6").count();
 
 const iframes =
-    await page.locator("iframe").count();
+await page.locator("iframe").count();
 
 const videos =
-    await page.locator("video").count();
+await page.locator("video").count();
 
 const audios =
-    await page.locator("audio").count();
+await page.locator("audio").count();
 
 const scripts =
-    await page.locator("script").count();
+await page.locator("script").count();
 
 const stylesheets =
-    await page.locator("link[rel='stylesheet']").count();
+await page.locator("link[rel='stylesheet']").count();
     // ======================================================
 // PAGE METADATA
 // ======================================================
@@ -202,7 +190,8 @@ const viewport = page.viewportSize()!;
 // FORMS DISCOVERY
 // ======================================================
 
-const formData = await page.locator("form").evaluateAll(forms =>
+const formData =
+await page.locator("form").evaluateAll(forms =>
 
     forms.map((f: any) => ({
 
@@ -230,7 +219,7 @@ const formData = await page.locator("form").evaluateAll(forms =>
 
 );
     // ======================================================
-// BUTTON DISCOVERY
+// BUTTONS DISCOVERY
 // ======================================================
 
 const buttonData =
@@ -238,49 +227,322 @@ await page.locator("button,[role='button']").evaluateAll(btns =>
 
     btns.map((b:any)=>({
 
-        text:b.innerText,
+        text: b.innerText,
 
-        id:b.id,
+        id: b.id,
 
-        type:b.type,
+        type: b.type,
 
-        disabled:b.disabled,
+        disabled: b.disabled,
 
-        className:b.className,
+        className: b.className,
 
-        ariaLabel:b.getAttribute("aria-label")
+        ariaLabel: b.getAttribute("aria-label")
 
     }))
 
 );
     // ======================================================
-// INPUT DISCOVERY
+// INPUTS DISCOVERY
 // ======================================================
 
 const inputData =
-await page.locator("input").evaluateAll(inputs=>
+await page.locator("input").evaluateAll(inputs =>
 
     inputs.map((i:any)=>({
 
-        id:i.id,
+        id: i.id,
 
-        name:i.name,
+        name: i.name,
 
-        type:i.type,
+        type: i.type,
 
-        placeholder:i.placeholder,
+        placeholder: i.placeholder,
 
-        value:i.value,
+        value: i.value,
 
-        required:i.required,
+        required: i.required,
 
-        disabled:i.disabled,
+        disabled: i.disabled,
 
-        readOnly:i.readOnly,
+        readOnly: i.readOnly,
 
-        autocomplete:i.autocomplete
+        autocomplete: i.autocomplete
 
     }))
 
 );
-    
+    // ======================================================
+// LINKS DISCOVERY
+// ======================================================
+
+const linkData =
+await page.locator("a").evaluateAll(links =>
+
+    links.map((l:any)=>({
+
+        text: l.innerText,
+
+        href: l.href,
+
+        target: l.target,
+
+        rel: l.rel
+
+    }))
+
+);
+    // ======================================================
+// IMAGES DISCOVERY
+// ======================================================
+
+const imageData =
+await page.locator("img").evaluateAll(images =>
+
+    images.map((img:any)=>({
+
+        src: img.src,
+
+        alt: img.alt,
+
+        width: img.width,
+
+        height: img.height
+
+    }))
+
+);
+    // ======================================================
+// NAVIGATION DISCOVERY
+// ======================================================
+
+const navigation =
+await page.locator("nav a").evaluateAll(items =>
+
+    items.map((n:any)=>({
+
+        text: n.innerText,
+
+        href: n.href
+
+    }))
+
+);
+    // ======================================================
+// META TAGS
+// ======================================================
+
+const metaTags =
+await page.locator("meta").evaluateAll(meta =>
+
+    meta.map((m:any)=>({
+
+        name: m.getAttribute("name"),
+
+        property: m.getAttribute("property"),
+
+        content: m.getAttribute("content")
+
+    }))
+
+);
+    // ======================================================
+// COOKIES
+// ======================================================
+
+const cookies = await page.context().cookies();
+    // ======================================================
+// LOCAL STORAGE
+// ======================================================
+
+const localStorageData = await page.evaluate(() => {
+
+    const result: any[] = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+
+        const key = localStorage.key(i);
+
+        result.push({
+
+            key,
+
+            value: key ? localStorage.getItem(key) : null
+
+        });
+
+    }
+
+    return result;
+
+});
+    // ======================================================
+// SESSION STORAGE
+// ======================================================
+
+const sessionStorageData = await page.evaluate(() => {
+
+    const result: any[] = [];
+
+    for (let i = 0; i < sessionStorage.length; i++) {
+
+        const key = sessionStorage.key(i);
+
+        result.push({
+
+            key,
+
+            value: key ? sessionStorage.getItem(key) : null
+
+        });
+
+    }
+
+    return result;
+
+});
+    // ======================================================
+// PERFORMANCE
+// ======================================================
+
+const performance = await page.evaluate(() => {
+
+    const timing = window.performance.timing;
+
+    return {
+
+        domContentLoaded:
+
+            timing.domContentLoadedEventEnd -
+            timing.navigationStart,
+
+        loadEvent:
+
+            timing.loadEventEnd -
+            timing.navigationStart,
+
+        transferSize: 0
+
+    };
+
+});
+    // ======================================================
+// ACCESSIBILITY
+// ======================================================
+
+const accessibility = {
+
+    imagesWithoutAlt:
+
+        await page.locator("img:not([alt])").count(),
+
+    buttonsWithoutText:
+
+        await page.locator("button:empty").count(),
+
+    inputsWithoutLabel:
+
+        await page.locator("input:not([aria-label])").count()
+
+};
+    // ======================================================
+// SECURITY
+// ======================================================
+
+const security = {
+
+    https: currentUrl.startsWith("https://"),
+
+    mixedContent: 0
+
+};
+    // ======================================================
+// TECHNOLOGIES
+// ======================================================
+
+const technologies: string[] = [];
+    // ======================================================
+// FINAL RESULT
+// ======================================================
+
+return {
+
+    executionTime: new Date().toISOString(),
+
+    url: currentUrl,
+
+    title: pageTitle,
+
+    viewport,
+
+    statistics: {
+
+        buttons,
+
+        links,
+
+        inputs,
+
+        textareas,
+
+        dropdowns,
+
+        checkboxes,
+
+        radios,
+
+        images,
+
+        forms,
+
+        tables,
+
+        headings,
+
+        iframes,
+
+        videos,
+
+        audios,
+
+        scripts,
+
+        stylesheets
+
+    },
+
+    forms: formData,
+
+    buttons: buttonData,
+
+    inputs: inputData,
+
+    links: linkData,
+
+    images: imageData,
+
+    navigation,
+
+    metaTags,
+
+    cookies,
+
+    localStorage: localStorageData,
+
+    sessionStorage: sessionStorageData,
+
+    technologies,
+
+    consoleErrors,
+
+    networkFailures,
+
+    accessibility,
+
+    performance,
+
+    security
+
+};
+
+}
