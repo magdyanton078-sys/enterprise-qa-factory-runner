@@ -33,9 +33,11 @@ async function run() {
         console.log("Opening website...");
 
         await page.goto(targetUrl, {
-            waitUntil: "networkidle",
+            waitUntil: "domcontentloaded",
             timeout: 60000
         });
+        await page.waitForLoadState("load");
+        await page.waitForTimeout(3000);
 
         console.log("Running discovery...");
 
