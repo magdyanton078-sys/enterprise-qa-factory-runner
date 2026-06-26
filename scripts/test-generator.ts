@@ -1,210 +1,171 @@
-
 import fs from "fs";
 
 export interface GeneratedTest {
-
     id: string;
-
     feature: string;
-
     title: string;
-
     type: string;
-
     priority: string;
-
     description: string;
-
     expected: string;
-
     selector?: string;
-
 }
 
 export interface DiscoveryResult {
-
     statistics: any;
-
     forms: any[];
-
     buttons: any[];
-
     inputs: any[];
-
     navigation: any[];
-
     links: any[];
-
 }
-const tests: GeneratedTest[] = [];
-export function generateTests(discovery: DiscoveryResult){
 
+/**
+ * Load discovery result from file (IMPORTANT FIX)
+ */
+function loadDiscovery(): DiscoveryResult {
+    return JSON.parse(
+        fs.readFileSync("test-results/discovery.json", "utf8")
+    );
 }
-if(discovery.forms.length>0){
 
-    tests.push({
+/**
+ * Generate tests based on discovery
+ */
+export function generateTests(discovery: DiscoveryResult): GeneratedTest[] {
 
-        id:"FORM-001",
+    const tests: GeneratedTest[] = [];
 
-        feature:"Forms",
+    // ---------------------------
+    // FORMS
+    // ---------------------------
+    if (discovery.forms?.length > 0) {
 
-        title:"Submit Valid Form",
+        tests.push(
+            {
+                id: "FORM-001",
+                feature: "Forms",
+                title: "Submit Valid Form",
+                type: "Positive",
+                priority: "Critical",
+                description: "Submit form with valid values",
+                expected: "Form submitted successfully"
+            },
+            {
+                id: "FORM-002",
+                feature: "Forms",
+                title: "Required Fields",
+                type: "Negative",
+                priority: "Critical",
+                description: "Leave required fields empty",
+                expected: "Validation appears"
+            },
+            {
+                id: "FORM-003",
+                feature: "Forms",
+                title: "Boundary Input",
+                type: "Boundary",
+                priority: "High",
+                description: "Maximum length validation",
+                expected: "Handled correctly"
+            }
+        );
+    }
 
-        type:"Positive",
+    // ---------------------------
+    // INPUTS
+    // ---------------------------
+    if (discovery.inputs?.length > 0) {
 
-        priority:"Critical",
+        tests.push(
+            {
+                id: "INPUT-001",
+                feature: "Input",
+                title: "Accept Valid Input",
+                type: "Positive",
+                priority: "High",
+                description: "Type valid value",
+                expected: "Accepted"
+            },
+            {
+                id: "INPUT-002",
+                feature: "Input",
+                title: "Reject Invalid Characters",
+                type: "Negative",
+                priority: "High",
+                description: "Enter special characters",
+                expected: "Validation triggered"
+            }
+        );
+    }
 
-        description:"Submit form with valid values",
+    // ---------------------------
+    // BUTTONS
+    // ---------------------------
+    if (discovery.buttons?.length > 0) {
 
-        expected:"Form submitted successfully"
+        tests.push({
+            id: "BTN-001",
+            feature: "Buttons",
+            title: "Clickable Buttons",
+            type: "Functional",
+            priority: "Critical",
+            description: "Verify buttons are clickable",
+            expected: "Action executed"
+        });
+    }
 
-    });
+    // ---------------------------
+    // NAVIGATION
+    // ---------------------------
+    if (discovery.navigation?.length > 0) {
 
-    tests.push({
+        tests.push({
+            id: "NAV-001",
+            feature: "Navigation",
+            title: "Navigation Links",
+            type: "Functional",
+            priority: "Critical",
+            description: "Verify navigation works",
+            expected: "Page loads correctly"
+        });
+    }
 
-        id:"FORM-002",
+    // ---------------------------
+    // LINKS
+    // ---------------------------
+    if (discovery.links?.length > 0) {
 
-        feature:"Forms",
+        tests.push({
+            id: "LINK-001",
+            feature: "Links",
+            title: "Check Links",
+            type: "Functional",
+            priority: "Medium",
+            description: "Validate link responses",
+            expected: "HTTP 200 OK"
+        });
+    }
 
-        title:"Required Fields",
-
-        type:"Negative",
-
-        priority:"Critical",
-
-        description:"Leave required fields empty",
-
-        expected:"Validation appears"
-
-    });
-
-    tests.push({
-
-        id:"FORM-003",
-
-        feature:"Forms",
-
-        title:"Boundary Input",
-
-        type:"Boundary",
-
-        priority:"High",
-
-        description:"Maximum length",
-
-        expected:"Handled correctly"
-
-    });
-
+    return tests;
 }
-if(discovery.inputs.length>0){
 
-    tests.push({
+/**
+ * MAIN EXECUTION (IMPORTANT FIX)
+ */
+function main() {
 
-        id:"INPUT-001",
+    const discovery = loadDiscovery();
 
-        feature:"Input",
+    const tests = generateTests(discovery);
 
-        title:"Accept Valid Input",
+    fs.writeFileSync(
+        "test-results/generated-tests.json",
+        JSON.stringify(tests, null, 2)
+    );
 
-        type:"Positive",
-
-        priority:"High",
-
-        description:"Type valid value",
-
-        expected:"Accepted"
-
-    });
-
-    tests.push({
-
-        id:"INPUT-002",
-
-        feature:"Input",
-
-        title:"Reject Invalid Characters",
-
-        type:"Negative",
-
-        priority:"High",
-
-        description:"Enter special chars",
-
-        expected:"Validation"
-
-    });
-
+    console.log(`Generated ${tests.length} test cases`);
 }
-if(discovery.buttons.length>0){
 
-    tests.push({
-
-        id:"BTN-001",
-
-        feature:"Buttons",
-
-        title:"Clickable",
-
-        type:"Functional",
-
-        priority:"Critical",
-
-        description:"Click button",
-
-        expected:"Correct action"
-
-    });
-
-}
-if(discovery.navigation.length>0){
-
-    tests.push({
-
-        id:"NAV-001",
-
-        feature:"Navigation",
-
-        title:"Navigation Links",
-
-        type:"Functional",
-
-        priority:"Critical",
-
-        description:"Open every menu",
-
-        expected:"Page opens"
-
-    });
-
-}
-if(discovery.links.length>0){
-
-    tests.push({
-
-        id:"LINK-001",
-
-        feature:"Links",
-
-        title:"Broken Links",
-
-        type:"Functional",
-
-        priority:"Medium",
-
-        description:"Verify HTTP Status",
-
-        expected:"200"
-
-    });
-
-}
-fs.writeFileSync(
-
-    "test-results/generated-tests.json",
-
-    JSON.stringify(tests,null,2)
-
-);
-
-return tests;
+// Run script
+main();
