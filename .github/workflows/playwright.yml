@@ -23,7 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -31,85 +31,75 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Install Playwright Browsers
+      - name: Install Browsers
         run: npx playwright install --with-deps
 
       - name: Prepare Workspace
         run: |
-          mkdir -p test-results
           mkdir -p generated-tests
-          mkdir -p playwright-report
-          mkdir -p qa-artifacts
+          mkdir -p test-results
 
       ####################################################
-      # 1. DISCOVERY (ONLY SOURCE OF TRUTH)
+      # DISCOVERY (IMPORTANT FIX)
       ####################################################
-      - name: Run Discovery
+      - name: Run Discovery Spec
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
         run: |
-          set -e
-          npx ts-node scripts/discovery-runner.ts
+          npx playwright test discovery.spec.ts
 
           echo "Checking discovery output..."
           test -f test-results/discovery.json || (echo "Missing discovery.json" && exit 1)
 
       ####################################################
-      # 2. TEST GENERATION
+      # GENERATE TESTS
       ####################################################
       - name: Generate Tests
         run: |
-          set -e
           npx ts-node scripts/test-generator.ts
-
-          test -f test-results/generated-tests.json || (echo "Missing generated tests" && exit 1)
+          test -f test-results/generated-tests.json || (echo "Missing tests" && exit 1)
 
       ####################################################
-      # 3. SPEC BUILD
+      # BUILD SPECS
       ####################################################
       - name: Build Specs
         run: |
-          set -e
           npx ts-node scripts/spec-builder.ts
-
-          test -f generated-tests/generated.spec.ts || (echo "Missing spec file" && exit 1)
+          test -f generated-tests/generated.spec.ts || (echo "Missing spec" && exit 1)
 
       ####################################################
-      # 4. EXECUTION
+      # EXECUTE
       ####################################################
       - name: Run Tests
         env:
           TARGET_URL: ${{ github.event.inputs.targetUrl }}
-        run: npx playwright test generated-tests
+        run: |
+          npx playwright test generated-tests
 
       ####################################################
-      # 5. ANALYSIS
+      # ANALYZE
       ####################################################
       - name: Analyze
         if: always()
-        run: npx ts-node scripts/defect-analyzer.ts
+        run: |
+          npx ts-node scripts/defect-analyzer.ts
 
       ####################################################
-      # 6. SUMMARY
+      # SUMMARY
       ####################################################
       - name: Summary
         if: always()
         run: |
-          echo "================================"
-          echo "Execution Summary"
-          echo "================================"
           cat test-results/final-report.json || echo "No report"
 
       ####################################################
-      # 7. ARTIFACTS
+      # ARTIFACTS
       ####################################################
-      - name: Upload Artifacts
+      - name: Upload
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: qa-${{ github.run_id }}
+          name: qa-run
           path: |
             generated-tests/
             test-results/
-            playwright-report/
-            qa-artifacts/
