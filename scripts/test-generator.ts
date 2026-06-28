@@ -144,12 +144,9 @@ if (discovery.statistics?.buttons > 0 && discovery.buttons?.length) {
 
         expected: "Button clickable",
 
-selector =
-button.id
-|| button.name
-|| button.testId
-|| button.dataTestId
-|| `button:nth-of-type(${index + 1})`
+selector:
+    button.selector
+    || "button"
 
     });
 
