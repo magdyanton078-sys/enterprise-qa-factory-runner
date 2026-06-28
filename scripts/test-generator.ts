@@ -81,11 +81,13 @@ if (discovery.statistics?.forms > 0 && discovery.forms?.length) {
 
         expected: "Form behaves correctly",
 
-       selector:
-    form.id
-    || form.name
-    || form.action
-    || `form:nth-of-type(${index + 1})`
+       
+   selector =
+form.id
+    ? `#${form.id}`
+: form.name
+    ? `form[name="${form.name}"]`
+: `form:nth-of-type(${index+1})`
 
     });
     });
@@ -144,10 +146,11 @@ if (discovery.statistics?.buttons > 0 && discovery.buttons?.length) {
         expected: "Button clickable",
 
         selector:
-    button.id
-    || button.ariaLabel
-    || button.text
-    || `button:nth-of-type(${index + 1})`
+button.id
+    ? `#${button.id}`
+: button.ariaLabel
+    ? `[aria-label="${button.ariaLabel}"]`
+: `button:nth-of-type(${index+1})`
 
     });
 
@@ -233,10 +236,9 @@ selector:
 
             expected: "Image loads",
 selector:
-  img.id
-  || img.alt
-  || img.src
-  || `img:nth-of-type(${index + 1})`
+img.id
+    ? `#${img.id}`
+: `img:nth-of-type(${index+1})`
 
     });
     });
