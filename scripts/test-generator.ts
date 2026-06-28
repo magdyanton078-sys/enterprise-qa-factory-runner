@@ -82,13 +82,12 @@ if (discovery.statistics?.forms > 0 && discovery.forms?.length) {
         expected: "Form behaves correctly",
 
        
-   selector =
-form.id
-    ? `#${form.id}`
-: form.name
-    ? `form[name="${form.name}"]`
-: `form:nth-of-type(${index+1})`
-
+selector:
+    form.id
+        ? `#${form.id}`
+        : form.name
+            ? `form[name="${form.name}"]`
+            : `form:nth-of-type(${index + 1})`
     });
     });
     }
@@ -145,12 +144,12 @@ if (discovery.statistics?.buttons > 0 && discovery.buttons?.length) {
 
         expected: "Button clickable",
 
-        selector:
+selector:
 button.id
     ? `#${button.id}`
-: button.ariaLabel
-    ? `[aria-label="${button.ariaLabel}"]`
-: `button:nth-of-type(${index+1})`
+    : button.ariaLabel
+        ? `button[aria-label="${button.ariaLabel}"]`
+        : `button:nth-of-type(${index + 1})`
 
     });
 
@@ -238,7 +237,9 @@ selector:
 selector:
 img.id
     ? `#${img.id}`
-: `img:nth-of-type(${index+1})`
+    : img.alt
+        ? `img[alt="${img.alt}"]`
+        : `img:nth-of-type(${index + 1})`
 
     });
     });
@@ -466,9 +467,10 @@ item.id
             expected: "Iframe loads",
 selector:
 item.id
-|| item.name
-|| item.src
-|| `iframe:nth-of-type(${index + 1})`
+    ? `#${item.id}`
+    : item.name
+        ? `iframe[name="${item.name}"]`
+        : `iframe:nth-of-type(${index + 1})`
 
         });
 
