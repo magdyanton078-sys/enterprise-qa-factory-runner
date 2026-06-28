@@ -11,10 +11,31 @@ if (!fs.existsSync(inputFile)) {
     throw new Error("generated-tests.json not found");
 }
 
-const testCases = JSON.parse(
+const allTests = JSON.parse(
     fs.readFileSync(inputFile, "utf8")
 );
 
+const CI_ONLY = process.env.CI === "true";
+
+const PRIORITY_ORDER = {
+    Critical: 1,
+    High: 2,
+    Medium: 3
+};
+
+const testCases = CI_ONLY
+    ? allTests
+        .sort(
+            (a: any, b: any) =>
+                PRIORITY_ORDER[a.priority as keyof typeof PRIORITY_ORDER] -
+                PRIORITY_ORDER[b.priority as keyof typeof PRIORITY_ORDER]
+        )
+        .filter(
+            (t: any) =>
+                t.priority === "Critical" ||
+                t.priority === "High"
+        )
+    : allTests;
 let output = `
 import { test, expect } from '@playwright/test';
 
@@ -226,6 +247,7 @@ console.log("");
 console.log("====================================");
 console.log("Playwright Spec Generated");
 console.log("====================================");
-console.log(`Test Cases : ${testCases.length}`);
+console.log(`Generated Specs : ${testCases.length}`);
+console.log(`Available Tests : ${allTests.length}`);
 console.log(`Output File: ${generatedDir}/generated.spec.ts`);
 console.log("====================================");
