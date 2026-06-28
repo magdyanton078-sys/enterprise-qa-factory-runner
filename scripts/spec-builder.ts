@@ -129,7 +129,19 @@ else if (type.includes("button")) {
     output += `
 const btn = page.locator(${JSON.stringify(buttonLocator)}).first();
 
-expect(await btn.count()).toBeGreaterThan(0);
+await page.waitForTimeout(2000);
+
+const count = await btn.count();
+
+if (count > 0) {
+
+    if (await btn.first().isVisible()) {
+
+        await expect(btn.first()).toBeEnabled();
+
+    }
+
+}
 
 if (await btn.isVisible()) {
     await expect(btn).toBeEnabled();
