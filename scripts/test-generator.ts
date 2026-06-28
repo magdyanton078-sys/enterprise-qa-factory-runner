@@ -149,7 +149,7 @@ button.id
     ? `#${button.id}`
     : button.ariaLabel
         ? `button[aria-label="${button.ariaLabel}"]`
-        : `button:nth-of-type(${index + 1})`
+        : "button"
 
     });
 
