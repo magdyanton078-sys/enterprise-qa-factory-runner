@@ -54,14 +54,16 @@ for (const tc of testCases) {
     const id = sanitize(safe(tc.id, "TEST"));
 
     const title = safe(tc.title, "Generated Test");
-
     const type = safe(tc.type).toLowerCase();
+
+    const selector = safe(tc.selector);
 
     output += `
 
 test("${id} - ${title}", async ({ page }) => {
 
     await page.waitForLoadState("domcontentloaded");
+    await page.waitForTimeout(500);
 
 `;
         // =====================================================
@@ -80,9 +82,13 @@ test("${id} - ${title}", async ({ page }) => {
     else if (type.includes("form")) {
 
         output += `
-    const inputs = page.locator("input, textarea, select");
+    const form = page.locator("${selector || 'form'}").first();
 
-    expect(await inputs.count()).toBeGreaterThan(0);
+await expect(form).toBeVisible();
+
+const inputs = form.locator("input, textarea, select");
+
+expect(await inputs.count()).toBeGreaterThan(0);
 `;
 
     }
@@ -90,19 +96,25 @@ test("${id} - ${title}", async ({ page }) => {
     else if (type.includes("button")) {
 
         output += `
-    const buttons = page.locator("button,[role='button']");
+   const btn = page.locator("${selector || 'button'}").first();
 
-    expect(await buttons.count()).toBeGreaterThan(0);
+await expect(btn).toBeVisible();
+
+await expect(btn).toBeEnabled();
 `;
 
     }
 
     else if (type.includes("navigation")) {
 
-        output += `
-    const links = page.locator("a");
 
-    expect(await links.count()).toBeGreaterThan(0);
+output += `
+const navSelector = selector
+    ? `a[href="${selector}"]`
+    : "a";
+    const nav = page.locator("${navSelector}").first();
+
+await expect(nav).toBeVisible();
 `;
 
     }
@@ -174,9 +186,13 @@ test("${id} - ${title}", async ({ page }) => {
     else if (type.includes("image")) {
 
         output += `
-    const imgs = page.locator("img");
+const imgSelector = selector
+    ? `img[src="${selector}"]`
+    : "img";
+    const img = page.locator("${imgSelector}").first();
 
-    expect(await imgs.count()).toBeGreaterThan(0);
+await expect(img).toBeVisible();
+
 `;
 
     }
