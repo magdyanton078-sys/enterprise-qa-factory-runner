@@ -239,7 +239,18 @@ await page.locator("button,[role='button']").evaluateAll(btns =>
 
         className: b.className,
 
-        ariaLabel: b.getAttribute("aria-label")
+        ariaLabel: b.getAttribute("aria-label"),
+
+        selectorType: "css",
+
+        selector:
+            b.id
+                ? `#${b.id}`
+                : b.getAttribute("data-testid")
+                ? `button[data-testid="${b.getAttribute("data-testid")}"]`
+                : b.getAttribute("aria-label")
+                ? `button[aria-label="${b.getAttribute("aria-label")}"]`
+                : null
 
     }))
 
