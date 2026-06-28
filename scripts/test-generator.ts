@@ -144,12 +144,12 @@ if (discovery.statistics?.buttons > 0 && discovery.buttons?.length) {
 
         expected: "Button clickable",
 
-selector:
+selector =
 button.id
-    ? `#${button.id}`
-    : button.ariaLabel
-        ? `button[aria-label="${button.ariaLabel}"]`
-        : "button"
+|| button.name
+|| button.testId
+|| button.dataTestId
+|| `button:nth-of-type(${index + 1})`
 
     });
 
