@@ -48,6 +48,9 @@ function sanitize(value: string) {
     return value.replace(/[^a-zA-Z0-9-_]/g, "_");
 
 }
+function escapeSelector(value: string) {
+    return value.replace(/'/g, "\\'"); 
+    }
 
 for (const tc of testCases) {
 
@@ -56,7 +59,9 @@ for (const tc of testCases) {
     const title = safe(tc.title, "Generated Test");
     const type = safe(tc.type).toLowerCase();
 
-    const selector = safe(tc.selector);
+
+
+    const selector = escapeSelector(safe(tc.selector));
 
     output += `
 
@@ -65,7 +70,7 @@ test("${id} - ${title}", async ({ page }) => {
     await page.waitForLoadState("domcontentloaded");
     await page.waitForTimeout(500);
 
-`;
+`; 
         // =====================================================
     // SMART ASSERTIONS
     // =====================================================
@@ -80,9 +85,11 @@ test("${id} - ${title}", async ({ page }) => {
     }
 
     else if (type.includes("form")) {
+    const formLocator =
+    selector || "form";
 
         output += `
-    const form = page.locator("${selector || 'form'}").first();
+   const form = page.locator(${JSON.stringify(formLocator)}).first();
 
 await expect(form).toBeVisible();
 
@@ -94,10 +101,11 @@ expect(await inputs.count()).toBeGreaterThan(0);
     }
 
     else if (type.includes("button")) {
+        const buttonLocator =
+    selector || "button";
 
         output += `
-   const btn = page.locator("${selector || 'button'}").first();
-
+  const btn = page.locator(${JSON.stringify(buttonLocator)}).first();
 await expect(btn).toBeVisible();
 
 await expect(btn).toBeEnabled();
@@ -105,19 +113,18 @@ await expect(btn).toBeEnabled();
 
     }
 
-    else if (type.includes("navigation")) {
-
-
-output += `
-const navSelector = selector
+else if (type.includes("navigation")) {
+    const navLocator = selector
     ? `a[href="${selector}"]`
     : "a";
-    const nav = page.locator("${navSelector}").first();
 
-await expect(nav).toBeVisible();
+output += `
+const nav = page.locator(${JSON.stringify(navLocator)});
+
+await expect(nav.first()).toBeVisible();
 `;
 
-    }
+}
 
     else if (type.includes("access")) {
 
@@ -184,17 +191,15 @@ await expect(nav).toBeVisible();
     }
 
     else if (type.includes("image")) {
-
-        output += `
-const imgSelector = selector
+        const imgLocator = selector
     ? `img[src="${selector}"]`
     : "img";
-    const img = page.locator("${imgSelector}").first();
 
-await expect(img).toBeVisible();
+output += `
+const img = page.locator(${JSON.stringify(imgLocator)});
 
+await expect(img.first()).toBeVisible();
 `;
-
     }
 
     else {
@@ -210,7 +215,7 @@ await expect(img).toBeVisible();
 });
 
 `;
-}
+} 
 fs.writeFileSync(
     `${generatedDir}/generated.spec.ts`,
     output,
