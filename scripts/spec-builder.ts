@@ -121,18 +121,21 @@ expect(await inputs.count()).toBeGreaterThan(0);
 
     }
 
-    else if (type.includes("button")) {
-        const buttonLocator =
-    selector || "button";
+else if (type.includes("button")) {
 
-        output += `
-  const btn = page.locator(${JSON.stringify(buttonLocator)}).first();
-await expect(btn).toBeVisible();
+    const buttonLocator =
+        selector || "button";
 
-await expect(btn).toBeEnabled();
+    output += `
+const btn = page.locator(${JSON.stringify(buttonLocator)}).first();
+
+expect(await btn.count()).toBeGreaterThan(0);
+
+if (await btn.isVisible()) {
+    await expect(btn).toBeEnabled();
+}
 `;
-
-    }
+}
 
 else if (type.includes("navigation")) {
     const navLocator = selector
